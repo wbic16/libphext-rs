@@ -867,11 +867,6 @@ pub fn normalize(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn locate(phext: &str, target: &str) -> String {
-  return fetch(phext, to_coordinate(target));
-}
-
-/// ----------------------------------------------------------------------------------------------------------
 pub fn default_coordinate() -> Coordinate {
   let coord = Coordinate {
     z: ZCoordinate {

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use std::time::SystemTime;
-    use crate::phext::{self, PositionedScroll, BOOK_BREAK, CHAPTER_BREAK, COLLECTION_BREAK, LIBRARY_BREAK, SCROLL_BREAK, SECTION_BREAK, SERIES_BREAK, SHELF_BREAK, VOLUME_BREAK};
+    use crate::phext::{self, check_for_cowbell, PositionedScroll, BOOK_BREAK, CHAPTER_BREAK, COLLECTION_BREAK, LIBRARY_BREAK, SCROLL_BREAK, SECTION_BREAK, SERIES_BREAK, SHELF_BREAK, VOLUME_BREAK};
     use std::{collections::HashMap, io::Write};
 
     #[test]
@@ -10,6 +10,17 @@ mod tests {
         let test: phext::Coordinate = phext::to_coordinate(example_coordinate);
         let address: String = test.to_string();
         assert_eq!(address, example_coordinate, "Coordinate parsing failed");
+    }
+
+    #[test]
+    fn test_to_urlencoded() {
+        let sample1 = phext::to_coordinate("1.1.1/1.1.1/1.1.1");
+        let result1 = sample1.to_urlencoded();
+        assert_eq!(result1, "1.1.1;1.1.1;1.1.1");
+
+        let sample2 = phext::to_coordinate("98.76.54/32.10.1/23.45.67");
+        let result2 = sample2.to_urlencoded();
+        assert_eq!(result2, "98.76.54;32.10.1;23.45.67");
     }
 
     fn test_helper(delim_in: u8, data: HashMap<&str, &str>) -> bool {
@@ -291,7 +302,11 @@ mod tests {
 
     #[test]
     fn test_more_cowbell() {
+        let test1 = check_for_cowbell("Hello\x07");
+        let test2 = check_for_cowbell("nope\x17just more scrolls");
         assert_eq!(phext::MORE_COWBELL, '\x07');
+        assert_eq!(test1, true);
+        assert_eq!(test2, false);
     }
 
     #[test]
@@ -785,6 +800,13 @@ mod tests {
         let doc2 = "very terse";
         let update2 = phext::create_summary(doc2);
         assert_eq!(update2, "very terse");
+    }
+
+    #[test]
+    fn test_navmap() {
+        let example = "Just a couple of scrolls.\x17Second scroll\x17Third scroll";
+        let result = phext::navmap("http://127.0.0.1/api/v1/index/", example);
+        assert_eq!(result, "<ul>\n<li><a href=\"http://127.0.0.1/api/v1/index/1.1.1;1.1.1;1.1.1\">1.1.1/1.1.1/1.1.1 Just a couple of scrolls.</a></li>\n<li><a href=\"http://127.0.0.1/api/v1/index/1.1.1;1.1.1;1.1.2\">1.1.1/1.1.1/1.1.2 Second scroll</a></li>\n<li><a href=\"http://127.0.0.1/api/v1/index/1.1.1;1.1.1;1.1.3\">1.1.1/1.1.1/1.1.3 Third scroll</a></li>\n</ul>\n");
     }
 
     #[test]
