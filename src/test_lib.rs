@@ -10,6 +10,10 @@ mod tests {
         let test: phext::Coordinate = phext::to_coordinate(example_coordinate);
         let address: String = test.to_string();
         assert_eq!(address, example_coordinate, "Coordinate parsing failed");
+
+        let weird_coordinate = "HOME";
+        let test_weird = phext::to_coordinate(weird_coordinate).to_string();
+        assert_eq!("1.1.1/1.1.1/1.1.1", test_weird);
     }
 
     #[test]

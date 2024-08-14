@@ -927,7 +927,9 @@ pub fn to_coordinate(address: &str) -> Coordinate {
     }
   }
 
-  result.x.scroll = value as usize;
+  if index > 0 {
+    result.x.scroll = value as usize;
+  }
 
   return result;
 }
