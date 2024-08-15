@@ -814,6 +814,13 @@ mod tests {
     }
 
     #[test]
+    fn test_textmap() {
+        let example = "Just a couple of scrolls.\x17Second scroll\x17Third scroll";
+        let result = phext::textmap(example);
+        assert_eq!(result, "* 1.1.1/1.1.1/1.1.1: Just a couple of scrolls.\n* 1.1.1/1.1.1/1.1.2: Second scroll\n* 1.1.1/1.1.1/1.1.3: Third scroll\n");
+    }
+
+    #[test]
     fn test_insert_performance_2k_scrolls() {
         let doc1 = "the quick brown fox jumped over the lazy dog";
         let mut x = 0;

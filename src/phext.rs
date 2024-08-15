@@ -421,6 +421,17 @@ pub fn navmap(urlbase: &str, phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+pub fn textmap(phext: &str) -> String {
+  let phokens = phokenize(phext);
+  let mut result = String::new();
+  for phoken in phokens {
+    result += &format!("* {}: {}\n", phoken.coord.to_string(), create_summary(&phoken.scroll)).to_string();
+  }
+
+  return result;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
   let bytes = phext.as_bytes();
   let parts = get_subspace_coordinates(bytes, location);
