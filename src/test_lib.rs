@@ -821,6 +821,55 @@ mod tests {
     }
 
     #[test]
+    fn test_scroll_manifest() {
+        let example = "first scroll\x17second scroll\x18second section\x19second chapter\x1Abook 2\x1Cvolume 2\x1Dcollection 2\x1Eseries 2\x1Fshelf 2\x01library 2";
+        let result = phext::manifest(example);
+
+        let scroll1 = "first scroll";
+        let hash1 = phext::checksum(scroll1);
+        assert_eq!(hash1, "ba9d944e4967e29d48bae69ac2999699");
+
+        let scroll2 = "second scroll";
+        let hash2 = phext::checksum(scroll2);
+        assert_eq!(hash2, "2fe1b2040314ac66f132dd3b4926157c");
+
+        let scroll3 = "second section";
+        let hash3 = phext::checksum(scroll3);
+        assert_eq!(hash3, "fddb6916753b6f4e0b5281469134778b");
+
+        let scroll4 = "second chapter";
+        let hash4 = phext::checksum(scroll4);
+        assert_eq!(hash4, "16ab5b1a0a997db95ec215a3bf2c57b3");
+
+        let scroll5 = "book 2";
+        let hash5 = phext::checksum(scroll5);
+        assert_eq!(hash5, "f20f79bf36f63e8fba25cc6765e2d0d");
+
+        let scroll6 = "volume 2";
+        let hash6 = phext::checksum(scroll6);
+        assert_eq!(hash6, "7ead0c6fef43adb446fe3bda6fb0adc7");
+
+        let scroll7 = "collection 2";
+        let hash7 = phext::checksum(scroll7);
+        assert_eq!(hash7, "78c12298931c6edede92962137a9280a");
+
+        let scroll8 = "series 2";
+        let hash8 = phext::checksum(scroll8);
+        assert_eq!(hash8, "f35100c84df601a490b7b63d7e8c0a8");
+
+        let scroll9 = "shelf 2";
+        let hash9 = phext::checksum(scroll9);
+        assert_eq!(hash9, "3bbf7e67cb33d613a906bc5a3cbefd95");
+
+        let scroll10 = "library 2";
+        let hash10 = phext::checksum(scroll10);
+        assert_eq!(hash10, "2e7fdd387196a8a2706ccb9ad6792bc3");
+
+        let expected = format!("{}\x17{}\x18{}\x19{}\x1A{}\x1C{}\x1D{}\x1E{}\x1F{}\x01{}", hash1, hash2, hash3, hash4, hash5, hash6, hash7, hash8, hash9, hash10);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
     fn test_insert_performance_2k_scrolls() {
         let doc1 = "the quick brown fox jumped over the lazy dog";
         let mut x = 0;

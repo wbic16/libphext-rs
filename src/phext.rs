@@ -432,6 +432,30 @@ pub fn textmap(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @fn checksum
+///
+/// Provides a 128-bit content checksum using the fastest algorithm Rust provides: xxh3
+/// ----------------------------------------------------------------------------------------------------------
+pub fn checksum(phext: &str) -> String {
+  let hash = xxhash_rust::xxh3::xxh3_128(phext.as_bytes());
+  return format!("{:x}", hash);
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+pub fn manifest(phext: &str) -> String {
+  let mut phokens = phokenize(phext);
+  let mut i = 0;
+  while i < phokens.len() {
+    phokens[i].scroll = checksum(phokens[i].scroll.as_str());
+    i += 1;
+  }
+
+  let result = dephokenize(&mut phokens);
+
+  return result;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
   let bytes = phext.as_bytes();
   let parts = get_subspace_coordinates(bytes, location);
