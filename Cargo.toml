@@ -1,6 +1,6 @@
 [package]
 name = "libphext"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Will Bickford <wbic16@gmail.com>"]
 description = "A rust-native implementation of phext"
 homepage = "https://phext.io/"
