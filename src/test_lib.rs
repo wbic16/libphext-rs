@@ -866,10 +866,9 @@ mod tests {
         let test9 = phext::offset(example, coord9);
         assert_eq!(test9, 103);
 
-        // TODO: figure out how we want to handle empty scrolls - they aren't indexed
-        //let coord_invalid = phext::to_coordinate("2.1.1/1.1.1/1.2.1");
-        //let test_invalid = phext::offset(example, coord_invalid);
-        //assert_eq!(test_invalid, 112);
+        let coord_invalid = phext::to_coordinate("2.1.1/1.1.1/1.2.1");
+        let test_invalid = phext::offset(example, coord_invalid);
+        assert_eq!(test_invalid, 103);
 
         assert_eq!(example.len(), 112);
     }

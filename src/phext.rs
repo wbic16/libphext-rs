@@ -456,7 +456,7 @@ pub fn manifest(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn index(phext: &str) -> String {
+fn index_phokens(phext: &str) -> Vec<PositionedScroll> {
   let phokens = phokenize(phext);
   let mut offset: usize = 0;
   let mut coord = default_coordinate();
@@ -479,13 +479,38 @@ pub fn index(phext: &str) -> String {
     i += 1;
   }
 
+  return output;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+pub fn index(phext: &str) -> String {
+  let mut output = index_phokens(phext);
+
   return dephokenize(&mut output);
 }
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn offset(phext: &str, coord: Coordinate) -> usize {
-  let offsets = index(phext);  
-  return fetch(offsets.as_str(), coord).parse::<usize>().unwrap();
+  let mut output = index_phokens(phext);
+
+  let mut best = default_coordinate();
+  let mut matched = false;
+  let mut fetch_coord = coord;
+  for phoken in output.clone() {
+    if phoken.coord <= coord {
+      best = phoken.coord;
+    }
+    if phoken.coord == coord {
+      matched = true;
+    }
+  }
+
+  if matched == false {
+    fetch_coord = best;
+  }
+  let index = dephokenize(&mut output);
+  
+  return fetch(index.as_str(), fetch_coord).parse::<usize>().unwrap();
 }
 
 /// ----------------------------------------------------------------------------------------------------------
