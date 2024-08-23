@@ -456,6 +456,39 @@ pub fn manifest(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+pub fn index(phext: &str) -> String {
+  let phokens = phokenize(phext);
+  let mut offset: usize = 0;
+  let mut coord = default_coordinate();
+  let mut output: Vec<PositionedScroll> = Vec::new();
+  let mut i: usize = 0;
+  while i < phokens.len() {
+    let reference = phokens[i].coord;
+    while coord.z.library < reference.z.library { coord.library_break(); offset += 1; }
+    while coord.z.shelf < reference.z.shelf { coord.shelf_break(); offset += 1; }
+    while coord.z.series < reference.z.series { coord.series_break(); offset += 1; }
+    while coord.y.collection < reference.y.collection { coord.collection_break(); offset += 1; }
+    while coord.y.volume < reference.y.volume { coord.volume_break(); offset += 1; }
+    while coord.y.book < reference.y.book { coord.book_break(); offset += 1; }
+    while coord.x.chapter < reference.x.chapter { coord.chapter_break(); offset += 1; }
+    while coord.x.section < reference.x.section { coord.section_break(); offset += 1; }
+    while coord.x.scroll < reference.x.scroll { coord.scroll_break(); offset += 1; }
+    
+    output.push(PositionedScroll { coord, scroll: format!("{}", offset)});
+    offset += phokens[i].scroll.len();
+    i += 1;
+  }
+
+  return dephokenize(&mut output);
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+pub fn offset(phext: &str, coord: Coordinate) -> usize {
+  let offsets = index(phext);  
+  return fetch(offsets.as_str(), coord).parse::<usize>().unwrap();
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
   let bytes = phext.as_bytes();
   let parts = get_subspace_coordinates(bytes, location);

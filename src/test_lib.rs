@@ -213,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn test_dead_reckoning() {        
+    fn test_dead_reckoning() {
         let mut test: String = "".to_string();
         test += "random text in 1.1.1/1.1.1/1.1.1 that we can skip past";
         test.push(LIBRARY_BREAK);
@@ -318,7 +318,7 @@ mod tests {
         let mut test: String = "".to_string();
         test += "aaa";               // 1.1.1/1.1.1/1.1.1
         test.push(LIBRARY_BREAK); // 2.1.1/1.1.1/1.1.1
-        test += "bbb";               // 
+        test += "bbb";               //
         test.push(SCROLL_BREAK);  // 2.1.1/1.1.1/1.1.2
         test += "ccc";
 
@@ -616,7 +616,7 @@ mod tests {
     fn test_next_scroll() {
         let doc1 = "3A\x17B2\x18C1";
         let (update1, next_start, remaining) = phext::next_scroll(doc1, phext::to_coordinate("1.1.1/1.1.1/1.1.1"));
-        assert_eq!(update1.coord.to_string(), "1.1.1/1.1.1/1.1.1");        
+        assert_eq!(update1.coord.to_string(), "1.1.1/1.1.1/1.1.1");
         assert_eq!(update1.scroll, "3A");
         assert_eq!(next_start.to_string(), "1.1.1/1.1.1/1.1.2");
         assert_eq!(remaining, "B2\x18C1");
@@ -706,7 +706,7 @@ mod tests {
         let doc_7b = "\x1A + Part II\x1A + Part Deux";
         let update_7 = phext::merge(doc_7a, doc_7b);
         assert_eq!(update_7, "\x1ABook #2 Part 1 + Part II\x1ABook #3 Part 1 + Part Deux");
-    
+
         let doc8a = "AA\x01BB\x01CC";
         let doc8b = "__\x01__\x01__";
         let update8 = phext::merge(doc8a, doc8b);
@@ -821,6 +821,60 @@ mod tests {
     }
 
     #[test]
+    fn test_phext_index() {
+        let example = "first scroll\x17second scroll\x18second section\x19second chapter\x1Abook 2\x1Cvolume 2\x1Dcollection 2\x1Eseries 2\x1Fshelf 2\x01library 2";
+        let result = phext::index(example);
+        assert_eq!(result, "0\x1713\x1827\x1942\x1a57\x1c64\x1d73\x1e86\x1f95\x01103");
+
+        let coord1 = phext::to_coordinate("1.1.1/1.1.1/1.1.1");
+        let test1 = phext::offset(example, coord1);
+        assert_eq!(test1, 0);
+
+        let coord2 = phext::to_coordinate("1.1.1/1.1.1/1.1.2");
+        let test2 = phext::offset(example, coord2);
+        assert_eq!(test2, 13);
+
+        let coord3 = phext::to_coordinate("1.1.1/1.1.1/1.2.1");
+        let test3 = phext::offset(example, coord3);
+        assert_eq!(test3, 27);
+
+        let coord4 = phext::to_coordinate("1.1.1/1.1.1/2.1.1");
+        let test4 = phext::offset(example, coord4);
+        assert_eq!(test4, 42);
+
+        let coord5 = phext::to_coordinate("1.1.1/1.1.2/1.1.1");
+        let test5 = phext::offset(example, coord5);
+        assert_eq!(test5, 57);
+
+        let coord6 = phext::to_coordinate("1.1.1/1.2.1/1.1.1");
+        let test6 = phext::offset(example, coord6);
+        assert_eq!(test6, 64);
+
+        let coord7 = phext::to_coordinate("1.1.1/2.1.1/1.1.1");
+        let test7 = phext::offset(example, coord7);
+        assert_eq!(test7, 73);
+
+        let coord8 = phext::to_coordinate("1.1.2/1.1.1/1.1.1");
+        let test8 = phext::offset(example, coord8);
+        assert_eq!(test8, 86);
+
+        let coord9 = phext::to_coordinate("1.2.1/1.1.1/1.1.1");
+        let test9 = phext::offset(example, coord9);
+        assert_eq!(test9, 95);
+
+        let coord9 = phext::to_coordinate("2.1.1/1.1.1/1.1.1");
+        let test9 = phext::offset(example, coord9);
+        assert_eq!(test9, 103);
+
+        // TODO: figure out how we want to handle empty scrolls - they aren't indexed
+        //let coord_invalid = phext::to_coordinate("2.1.1/1.1.1/1.2.1");
+        //let test_invalid = phext::offset(example, coord_invalid);
+        //assert_eq!(test_invalid, 112);
+
+        assert_eq!(example.len(), 112);
+    }
+
+    #[test]
     fn test_scroll_manifest() {
         let example = "first scroll\x17second scroll\x18second section\x19second chapter\x1Abook 2\x1Cvolume 2\x1Dcollection 2\x1Eseries 2\x1Fshelf 2\x01library 2";
         let result = phext::manifest(example);
@@ -881,7 +935,7 @@ mod tests {
             x += 1;
             if x > 2000 {
                 break;
-            }            
+            }
             if next.x.scroll > 32 {
                 next.section_break();
             }
@@ -963,7 +1017,7 @@ mod tests {
             x += 1;
             if x > 25 {
                 break;
-            }            
+            }
             if next.x.scroll > 5 {
                 next.section_break();
             }
@@ -1018,9 +1072,9 @@ mod tests {
         assert_eq!(phext_tokens, expected_tokens);
 
         assert_eq!(line_breaks, 25000); //
-        assert_eq!(scroll_breaks, 20);  // 
-        assert_eq!(section_breaks, 4);  // 
-        assert_eq!(chapter_breaks, 0);  // 
+        assert_eq!(scroll_breaks, 20);  //
+        assert_eq!(section_breaks, 4);  //
+        assert_eq!(chapter_breaks, 0);  //
 
         // doc1 * 1000 + delimiter count
         let expected_length = 25 * (expected_doc1_length-1000) + expected_tokens;
