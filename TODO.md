@@ -1,6 +1,8 @@
 * conversion methods
   * tar
   * zip
+  * sqlite
+  * local file system
 * fast indexing
   * checksum forking: record expected offsets and checksums in .checksum files
   * hierarchy map in memory
