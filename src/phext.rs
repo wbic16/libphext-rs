@@ -467,7 +467,7 @@ fn soundex_internal(byte: String) -> String {
   let letter5 = "mn";
   let letter6 = "r";
 
-  let mut value: usize = 0;
+  let mut value: usize = 1; // 1-100
   for c in byte.to_string().into_bytes() {
     if letter1.contains(c as char) { value += 1; continue; }
     if letter2.contains(c as char) { value += 2; continue; }
@@ -477,7 +477,7 @@ fn soundex_internal(byte: String) -> String {
     if letter6.contains(c as char) { value += 6; continue; }
   }
 
-  return (value % 100).to_string();
+  return (value % 99).to_string();
 }
 
 
