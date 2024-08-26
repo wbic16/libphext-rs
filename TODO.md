@@ -1,3 +1,6 @@
+* content checksums
+  * incorporate the content soundex from raap
+    see: https://phext.io/api.php?seed=raap&token=research&coordinate=1.1.1/1.1.1/1.1.2
 * conversion methods
   * tar
   * zip
