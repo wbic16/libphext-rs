@@ -923,6 +923,13 @@ mod tests {
     }
 
     #[test]
+    fn test_phext_soundex_v1() {
+        let sample = "it was the best of scrolls\x17it was the worst of scrolls\x17aaa\x17bbb\x17ccc\x17ddd\x17eee\x17fff\x17ggg\x17hhh\x17iii\x17jjj\x17kkk\x17lll\x18mmm\x18nnn\x18ooo\x18ppp\x19qqq\x19rrr\x19sss\x19ttt\x1auuu\x1avvv\x1awww\x1axxx\x1ayyy\x1azzz";
+        let result = phext::soundex_v1(sample);
+        assert_eq!(result, "35\x1740\x170\x173\x176\x179\x170\x173\x176\x170\x170\x176\x176\x1712\x1815\x1815\x180\x183\x196\x1918\x196\x199\x1a0\x1a3\x1a0\x1a6\x1a0\x1a6");
+    }
+
+    #[test]
     fn test_insert_performance_2k_scrolls() {
         let doc1 = "the quick brown fox jumped over the lazy dog";
         let mut x = 0;

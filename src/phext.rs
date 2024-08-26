@@ -456,6 +456,43 @@ pub fn manifest(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// soundex_internal
+/// inspired by https://sites.rootsweb.com/~nedodge/transfer/soundexlist.htm
+/// ----------------------------------------------------------------------------------------------------------
+fn soundex_internal(byte: String) -> String {
+  let letter1 = "bpfv";
+  let letter2 = "cskgjqxz";
+  let letter3 = "dt";
+  let letter4 = "l";
+  let letter5 = "mn";
+  let letter6 = "r";
+
+  let mut value: usize = 0;
+  for c in byte.to_string().into_bytes() {
+    if letter1.contains(c as char) { value += 1; continue; }
+    if letter2.contains(c as char) { value += 2; continue; }
+    if letter3.contains(c as char) { value += 3; continue; }
+    if letter4.contains(c as char) { value += 4; continue; }
+    if letter5.contains(c as char) { value += 5; continue; }
+    if letter6.contains(c as char) { value += 6; continue; }
+  }
+
+  return (value % 100).to_string();
+}
+
+
+/// ----------------------------------------------------------------------------------------------------------
+pub fn soundex_v1(phext: &str) -> String {
+  let mut phokens = phokenize(phext);
+  
+  for ith in &mut phokens {
+    ith.scroll = soundex_internal(ith.scroll.clone());
+  }
+
+  return dephokenize(&mut phokens);
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 fn index_phokens(phext: &str) -> Vec<PositionedScroll> {
   let phokens = phokenize(phext);
   let mut offset: usize = 0;
