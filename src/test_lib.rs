@@ -878,6 +878,10 @@ mod tests {
         let example = "first scroll\x17second scroll\x18second section\x19second chapter\x1Abook 2\x1Cvolume 2\x1Dcollection 2\x1Eseries 2\x1Fshelf 2\x01library 2";
         let result = phext::manifest(example);
 
+        let scroll0 = "00000000000000000000";
+        let hash0 = phext::checksum(scroll0);
+        assert_eq!(hash0, "7e79edd92a62a048e1cd24ffab542e34");
+
         let scroll1 = "first scroll";
         let hash1 = phext::checksum(scroll1);
         assert_eq!(hash1, "ba9d944e4967e29d48bae69ac2999699");
@@ -896,7 +900,7 @@ mod tests {
 
         let scroll5 = "book 2";
         let hash5 = phext::checksum(scroll5);
-        assert_eq!(hash5, "f20f79bf36f63e8fba25cc6765e2d0d");
+        assert_eq!(hash5, "0f20f79bf36f63e8fba25cc6765e2d0d");
 
         let scroll6 = "volume 2";
         let hash6 = phext::checksum(scroll6);
@@ -908,7 +912,7 @@ mod tests {
 
         let scroll8 = "series 2";
         let hash8 = phext::checksum(scroll8);
-        assert_eq!(hash8, "f35100c84df601a490b7b63d7e8c0a8");
+        assert_eq!(hash8, "0f35100c84df601a490b7b63d7e8c0a8");
 
         let scroll9 = "shelf 2";
         let hash9 = phext::checksum(scroll9);
@@ -1086,5 +1090,36 @@ mod tests {
         let expected_length = 25 * (expected_doc1_length-1000) + expected_tokens;
         assert_eq!(check.len(), expected_length);
 
+    }
+
+    #[test]
+    fn test_new_operators() {
+        let ps = phext::PositionedScroll::new();
+        assert_eq!(ps.scroll, "".to_string());
+        assert_eq!(ps.coord, phext::to_coordinate("1.1.1/1.1.1/1.1.1"));
+
+        let coord = phext::Coordinate::new();
+        assert_eq!(coord.z, phext::ZCoordinate::new());
+        assert_eq!(coord.y, phext::YCoordinate::new());
+        assert_eq!(coord.x, phext::XCoordinate::new());
+
+        let range = phext::Range::new();
+        assert_eq!(range.start, phext::Coordinate::new());
+        assert_eq!(range.end, phext::Coordinate::new());
+
+        let zc = phext::ZCoordinate::new();
+        assert_eq!(zc.library, 1);
+        assert_eq!(zc.shelf, 1);
+        assert_eq!(zc.series, 1);
+
+        let yc = phext::YCoordinate::new();
+        assert_eq!(yc.collection, 1);
+        assert_eq!(yc.volume, 1);
+        assert_eq!(yc.book, 1);
+
+        let xc = phext::XCoordinate::new();
+        assert_eq!(xc.chapter, 1);
+        assert_eq!(xc.section, 1);
+        assert_eq!(xc.scroll, 1);
     }
 }

@@ -141,13 +141,14 @@ pub struct ZCoordinate {
   pub shelf: usize,
   pub series: usize
 }
+impl ZCoordinate {
+  pub fn new() -> ZCoordinate {
+    ZCoordinate { library: 1, shelf: 1, series: 1 }
+  }
+}
 impl Default for ZCoordinate {
   fn default() -> ZCoordinate {
-    ZCoordinate {
-      library: 1,
-      shelf: 1,
-      series: 1
-    }
+    ZCoordinate::new()
   }
 }
 impl std::fmt::Display for ZCoordinate {
@@ -167,13 +168,14 @@ pub struct YCoordinate {
   pub volume: usize,
   pub book: usize
 }
+impl YCoordinate {
+  pub fn new() -> YCoordinate {
+    YCoordinate { collection: 1, volume: 1, book: 1 }
+  }
+}
 impl Default for YCoordinate {
   fn default() -> YCoordinate {
-    YCoordinate {
-      collection: 1,
-      volume: 1,
-      book: 1
-    }
+    YCoordinate::new()
   }
 }
 impl std::fmt::Display for YCoordinate {
@@ -193,13 +195,14 @@ pub struct XCoordinate {
   pub section: usize,
   pub scroll: usize
 }
+impl XCoordinate {
+  pub fn new() -> XCoordinate {
+    XCoordinate { chapter: 1, section: 1, scroll: 1 }
+  }
+}
 impl Default for XCoordinate {
   fn default() -> XCoordinate {
-    XCoordinate {
-      chapter: 1,
-      section: 1,
-      scroll: 1
-    }
+    XCoordinate::new()
   }
 }
 impl std::fmt::Display for XCoordinate {
@@ -226,6 +229,11 @@ pub struct Coordinate {
   pub y: YCoordinate,
   pub x: XCoordinate,
 }
+impl Coordinate {
+  pub fn new() -> Coordinate {
+    Coordinate { z: ZCoordinate::new(), y: YCoordinate::new(), x: XCoordinate::new() }
+  }
+}
 impl std::fmt::Display for Coordinate {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     return write!(f, "{}/{}/{}", self.z, self.y, self.x);
@@ -237,6 +245,11 @@ pub struct PositionedScroll {
   pub coord: Coordinate,
   pub scroll: String
 }
+impl PositionedScroll {
+  pub fn new() -> PositionedScroll {
+    PositionedScroll { coord: to_coordinate("1.1.1/1.1.1/1.1.1"), scroll: "".to_string() }
+  }
+}
 impl std::fmt::Display for PositionedScroll {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     return write!(f, "{}: {}", self.coord.to_string(), self.scroll[..4].to_string());
@@ -247,6 +260,11 @@ impl std::fmt::Display for PositionedScroll {
 pub struct Range {
   pub start: Coordinate,
   pub end: Coordinate
+}
+impl Range {
+  pub fn new() -> Range {
+    Range { start: to_coordinate("1.1.1/1.1.1/1.1.1"), end: to_coordinate("1.1.1/1.1.1/1.1.1") }
+  }
 }
 impl std::fmt::Display for Range {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -437,8 +455,9 @@ pub fn textmap(phext: &str) -> String {
 /// Provides a 128-bit content checksum using the fastest algorithm Rust provides: xxh3
 /// ----------------------------------------------------------------------------------------------------------
 pub fn checksum(phext: &str) -> String {
-  let hash = xxhash_rust::xxh3::xxh3_128(phext.as_bytes());
-  return format!("{:x}", hash);
+  let buffer = phext.as_bytes();
+  let hash = xxhash_rust::xxh3::xxh3_128(buffer);
+  return format!("{:0>32}", format!("{:x}", hash));
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -479,7 +498,6 @@ fn soundex_internal(byte: String) -> String {
 
   return (value % 99).to_string();
 }
-
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn soundex_v1(phext: &str) -> String {
@@ -616,14 +634,13 @@ pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
   let start: usize = parts_start.0;
   let mut end: usize = parts_end.1;
   println!("Subspace start: {}, end: {}", start, end);
-  let fixup: Vec<u8> = vec![];
 
   let text: std::slice::Iter<u8> = scroll.as_bytes().iter();
   let max = bytes.len();
   if end > max { end = max; }
   let left = &bytes[..start];
   let right = &bytes[end..];
-  let temp:Vec<u8> = left.iter().chain(fixup.iter()).chain(text).chain(right.iter()).cloned().collect();
+  let temp:Vec<u8> = left.iter().chain(text).chain(right.iter()).cloned().collect();
   let result: String = String::from_utf8(temp).expect("invalid utf8");
   return result;
 }
