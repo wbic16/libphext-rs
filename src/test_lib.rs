@@ -671,6 +671,22 @@ mod tests {
     }
 
     #[test]
+    fn test_last_empty_scroll() {
+
+        // a regression discovered from SQ - see https://github.com/wbic16/SQ
+        let doc1 = "hello\x17world\x17";
+        let target1 = phext::to_coordinate("1.1.1/1.1.1/1.1.2");
+        let bytes1: &[u8] = doc1.as_bytes();
+        let parts1 = phext::get_subspace_coordinates(bytes1, target1);
+        assert_eq!(parts1.0, 6);
+        assert_eq!(parts1.1, 11);
+        assert_eq!(parts1.2, target1);
+        
+        let test1 = phext::fetch(doc1, target1);
+        assert_eq!(test1, "world");
+    }
+
+    #[test]
     fn test_merge() {
         let doc_1a = "3A\x17B2";
         let doc_1b = "4C\x17D1";

@@ -373,6 +373,11 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
       if compare == LIBRARY_BREAK    { walker.library_break();    }
     }
 
+    if stage < 2 && walker > target {
+      end = subspace_index;
+      stage = 2;
+    }
+
     subspace_index += 1;
   }
 
