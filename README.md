@@ -1,10 +1,10 @@
 # libphext
 
-This Rust project provides the standard Phext implementation (11-dimensional plain hypertext). For more information about the phext format, head over to https://phext.io.
+This project is the primary implementation of 11-dimensional plain hypertext, or Phext. For more information about the phext format, head over to https://phext.io.
 
 ## Elevator Pitch
 
-Phext is hierarchical digital memory. It enables seamless knowledge transfer between humans and computers. Let's learn how to think at planet-scale. :)
+Phext is hierarchical digital memory. It enables seamless knowledge transfer between humans and computers. Let's learn how to think at multiversal-scale. :)
 
 ## Zero Dependencies*
 
@@ -16,7 +16,7 @@ Note: We depend upon `xxh3` for checksum content hashes.
 
 In the 1980s, computers could write 25 KB/sec to a floppy disk. In the 2020s, it became possible to write 2 GB/sec to an SSD. This changed the definition of a "small" file. Unfortunately, most of our file abstractions (especially on Windows) have not scaled to take advantage of these performance gains. For the most part, this isn't much of a problem: humans are still rate-limited at 300 bps using keyboards. At some point in the next 25 years, however, we will have high-bandwidth brain interconnects - at which point we will need a high-bandwidth multi-dimensional text format: phext!
 
-The introduction of Large Language Models (LLMs) has accelerated our transition to this future. You can use phext to interact with agents and groups of humans at scale - think of visualizing 9 billion computer screens at once. Phext is like being given a coordinate system of coordinate systems, allowing you to walk the latent space of any problem space efficiently.
+The introduction of Large Language Models (LLMs) has <em>accelerated</em> our transition to this future. You can use phext to interact with agents and groups of humans at scale - think of visualizing 9 billion computer screens at once. Phext is like being given a coordinate system of coordinate systems, allowing you to walk the latent space of any problem space efficiently.
 
 ## Phext Coordinate Formats
 
