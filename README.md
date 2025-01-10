@@ -6,11 +6,11 @@ This Rust project provides the standard Phext implementation (11-dimensional pla
 
 Phext is hierarchical digital memory. It enables seamless knowledge transfer between humans and computers. Let's learn how to think at planet-scale. :)
 
-## Zero Dependencies
+## Zero Dependencies*
 
 Phext is just 11-dimensional text. As such, you only need phext.rs and the standard libraries to work with it.* This tiny dependency gives you hierarchical superpowers. Use them wisely!
 
-Note: Although we do depend upon xxh3 for checksum content hashes.
+Note: We depend upon `xxh3` for checksum content hashes.
 
 ## Phext Motivation
 
@@ -84,3 +84,7 @@ The introduction of Large Language Models (LLMs) has accelerated our transition 
 * merge: verifies that two phext documents can be zipper-merged (intersection)
 * subtract: verifies that we can prune all of the coordinates from a second phext document
 * normalize: verifies that empty scrolls are pruned from the given phext document
+
+### Regressions
+
+1. While working on the exollama project, I found an input that caused libphext to stall - I was trying to insert a scroll with index=100, which wasn't supported prior to v0.2.0. Performance tuning for exollama will be coming soon, so I bumped the coordinate limit to 1000 for now.

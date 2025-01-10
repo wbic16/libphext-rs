@@ -177,9 +177,9 @@ mod tests {
 
     #[test]
     fn test_coordinates_valid() {
-        let c1: phext::Coordinate = phext::to_coordinate("255.254.253/32.4.8/4.2.1"); // valid
+        let c1: phext::Coordinate = phext::to_coordinate("1001.254.253/32.4.8/4.2.1"); // valid
         let c2 = phext::Coordinate {
-            z: phext::ZCoordinate{library: 255, shelf: 254, series: 253},
+            z: phext::ZCoordinate{library: 1001, shelf: 254, series: 253},
             y: phext::YCoordinate{collection: 32, volume: 4, book: 8},
             x: phext::XCoordinate{chapter: 4, section: 2, scroll: 1}};
         assert_eq!(c1, c2);
@@ -200,8 +200,20 @@ mod tests {
         assert_eq!(c1, c2);
         let c1b: bool = c1.validate_coordinate();
         let c2b: bool = c2.validate_coordinate();
-        assert_eq!(c1b, false);
-        assert_eq!(c2b, false);
+        assert_eq!(c1b, true);
+        assert_eq!(c2b, true);
+
+        let c3 = phext::to_coordinate("1001.1002.1003;1004.1005.1006;1007.1008.1009");
+        let c4 = phext::Coordinate {
+            z: phext::ZCoordinate{library: 1001, shelf: 1002, series: 1003},
+            y: phext::YCoordinate{collection: 1004, volume: 1005, book: 1006},
+            x: phext::XCoordinate{chapter: 1007, section: 1008, scroll: 1009}
+        };
+        assert_eq!(c3, c4);
+        let c3b = c3.validate_coordinate();
+        let c4b = c4.validate_coordinate();
+        assert_eq!(c3b, false);
+        assert_eq!(c4b, false);
     }
 
     #[test]

@@ -76,8 +76,8 @@
 /// ----------------------------------------------------------------------------------------------------------
 /// phext constants
 /// ----------------------------------------------------------------------------------------------------------
-pub const COORDINATE_MINIMUM: usize = 1;   // human numbering - we start at 1, not 0
-pub const COORDINATE_MAXIMUM: usize = 100; // 2 KB pages x 100^9 = 2 million petabytes
+pub const COORDINATE_MINIMUM: usize = 1;    // human numbering - we start at 1, not 0
+pub const COORDINATE_MAXIMUM: usize = 1000; // 2 KB pages x 100^9 = 2 million petabytes
 pub const LIBRARY_BREAK: char = '\x01';    // 11th dimension - replaces start of header
 pub const MORE_COWBELL: char = '\x07';     // i've got a fever, and the only prescription...is more cowbell!
 pub const LINE_BREAK: char = '\x0A';       // same as plain text \o/
