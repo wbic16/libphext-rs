@@ -2,7 +2,7 @@
 /// Phext Buffer Library
 /// ported from: https://github.com/wbic16/libphext/blob/main/phext.h
 ///
-/// Copyright: (c) 2024 Will Bickford
+/// Copyright: (c) 2024-2025 Will Bickford (Phext, Inc.)
 /// License: MIT
 ///
 /// Overview
@@ -73,6 +73,8 @@
 /// useful again.
 /// ----------------------------------------------------------------------------------------------------------
 
+use std::collections::HashMap;
+
 /// ----------------------------------------------------------------------------------------------------------
 /// phext constants
 /// ----------------------------------------------------------------------------------------------------------
@@ -135,7 +137,7 @@ pub const ADDRESS_MACRO_ALT: u8 = b';';   // also allow ';' for url encoding
 ///
 /// The large-scale Z arm of a phext coordinate (see `Coordinate` below)
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Copy, Clone)]
 pub struct ZCoordinate {
   pub library: usize,
   pub shelf: usize,
@@ -162,7 +164,7 @@ impl std::fmt::Display for ZCoordinate {
 ///
 /// The large-scale Y arm of a phext coordinate (see `Coordinate` below)
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Copy, Clone)]
 pub struct YCoordinate {
   pub collection: usize,
   pub volume: usize,
@@ -189,7 +191,7 @@ impl std::fmt::Display for YCoordinate {
 ///
 /// The large-scale X arm of a phext coordinate (see `Coordinate` below)
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Copy, Clone)]
 pub struct XCoordinate {
   pub chapter: usize,
   pub section: usize,
@@ -223,7 +225,7 @@ impl std::fmt::Display for XCoordinate {
 /// Y - this arm contains the collection (y3), volume (y2), and book (y1) dimensions
 /// X - this arm contains the chapter (x3), section (x2), and scroll (x1) dimensions
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(Default, Debug, PartialEq, PartialOrd, Copy, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Clone)]
 pub struct Coordinate {
   pub z: ZCoordinate,
   pub y: YCoordinate,
@@ -240,7 +242,7 @@ impl std::fmt::Display for Coordinate {
   }
 }
 
-#[derive(Default, Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Hash, PartialOrd, Clone)]
 pub struct PositionedScroll {
   pub coord: Coordinate,
   pub scroll: String
@@ -253,6 +255,11 @@ impl PositionedScroll {
 impl std::fmt::Display for PositionedScroll {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     return write!(f, "{}: {}", self.coord.to_string(), self.scroll[..4].to_string());
+  }
+}
+impl Ord for PositionedScroll {
+  fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+      return self.coord.cmp(&other.coord);
   }
 }
 
@@ -779,6 +786,35 @@ pub fn phokenize(phext: &str) -> Vec<PositionedScroll> {
   }
 
   return result;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn explode
+///
+/// Explodes an input phext into a hierarchical hashap, suitable for fast access and updates
+/// ----------------------------------------------------------------------------------------------------------
+pub fn explode(phext: &str) -> HashMap<Coordinate, String> {
+  let parts = phokenize(phext);
+  let mut hash = HashMap::new();
+  for row in parts {
+    hash.insert(row.coord, row.scroll);
+  }
+  return hash;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn implode
+///
+/// Serializes a hierarchical hash of scrolls into a monolithic phext document.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn implode(map: HashMap::<Coordinate, String>) -> String {
+  let mut vec: Vec<PositionedScroll> = Vec::new();
+  for (key, value) in map.into_iter() {
+    let ps = PositionedScroll{coord: key, scroll: value};
+    vec.push(ps);
+  }
+  vec.sort();
+  return dephokenize(&mut vec);
 }
 
 /// ----------------------------------------------------------------------------------------------------------

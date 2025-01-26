@@ -53,6 +53,8 @@ The introduction of Large Language Models (LLMs) has accelerated our transition 
 
 ### Phext Basics
 
+* explode: Splits an input buffer into a hashmap of scrolls
+* implode: Collapses a hashmap of scrolls back into a serialized phext buffer
 * test_more_cowbell: Ensures that you've got more cowbell!
 * line_break: Proves that we're using ASCII line breaks
 * coordinate_parsing: Verifies that string -> coordinate -> string produces the same result

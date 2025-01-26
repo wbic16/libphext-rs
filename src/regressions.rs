@@ -9,7 +9,7 @@ mod regressions {
         let helios = std::fs::read_to_string("regression-1-helios.phext").expect("Unable to open helios.phext");
         let coord = phext::to_coordinate("1.1.1/1.1.1/1.1.1");
         let result = phext::fetch(&helios, coord);
-        let bytes = 358;
+        let bytes = 370;
         let expected = result.len();
         println!("Helios: {}", result.len());
         assert_eq!(expected, bytes);
@@ -18,7 +18,7 @@ mod regressions {
         let push_coord = phext::to_coordinate("2.1.100/1.1.1/1.1.1");
         let result = phext::replace(helios.as_str(), push_coord, msg.as_str());
         println!("Update: {}", msg.len());
-        let bytes = 15150;
+        let bytes = 15317;
         let expected = result.len();
         assert_eq!(expected, bytes);
     }

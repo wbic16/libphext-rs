@@ -1150,4 +1150,21 @@ mod tests {
         assert_eq!(xc.section, 1);
         assert_eq!(xc.scroll, 1);
     }
+
+    #[test]
+    fn test_hash_support() {
+        let mut stuff = phext::explode("hello world\x17\x17\x17scroll 4\x01Library 2");
+        let scroll1_address = phext::to_coordinate("1.1.1/1.1.1/1.1.1");
+        let scroll2_address = phext::to_coordinate("1.1.1/1.1.1/1.1.4");
+        let scroll3_address = phext::to_coordinate("2.1.1/1.1.1/1.1.1");
+        assert_eq!(stuff[&scroll1_address], "hello world");
+        assert_eq!(stuff[&scroll2_address], "scroll 4");
+        assert_eq!(stuff[&scroll3_address], "Library 2");
+
+        let scroll4_address = phext::to_coordinate("2.3.4/5.6.7/8.9.1");
+        stuff.insert(scroll4_address, "random insertion".to_string());
+
+        let serialized = phext::implode(stuff);
+        assert_eq!(serialized, "hello world\x17\x17\x17scroll 4\x01Library 2\x1f\x1f\x1e\x1e\x1e\x1d\x1d\x1d\x1d\x1c\x1c\x1c\x1c\x1c\x1a\x1a\x1a\x1a\x1a\x1a\x19\x19\x19\x19\x19\x19\x19\x18\x18\x18\x18\x18\x18\x18\x18random insertion");
+    }
 }
