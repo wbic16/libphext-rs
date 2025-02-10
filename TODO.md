@@ -1,19 +1,18 @@
 * content checksums
   * incorporate the content soundex from raap
     see: https://phext.io/api.php?seed=raap&token=research&coordinate=1.1.1/1.1.1/1.1.2
-* conversion methods
+* support common file formats
   * tar
   * zip
   * sqlite
-  * local file system
+  * csv
+  * sql
 * non-linear flows
   Q: what happens to information as it flows along a path of phext coordinates?
   say we want to define stable regions early in the file...
   we could define a phext-based mask to assist with indexing
 * hierarchical mobs
 * DB emulation
-* Liquid Peanut Butter
-  * it's a bit nutty!
 * fast indexing
   * checksum forking: record expected offsets and checksums in .checksum files
   * hierarchy map in memory
