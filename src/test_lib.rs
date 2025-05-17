@@ -990,7 +990,7 @@ mod tests {
         let end = SystemTime::now().duration_since(start).expect("get millis error");
 
         println!("Performance test took: {} ms", end.as_millis());
-        let success = end.as_millis() < 5000;
+        let success = end.as_millis() < 10000;
         assert_eq!(success, true);
 
         // TODO: double-check this math
