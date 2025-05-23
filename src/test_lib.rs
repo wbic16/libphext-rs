@@ -849,6 +849,15 @@ mod tests {
     }
 
     #[test]
+    fn test_larger_coordinates() {
+        let coord = phext::to_coordinate("111.222.333/444.555.666/777.888.999");
+        let result = phext::insert(String::new(), coord, "Hello World");
+        let map = phext::textmap(result.as_str());
+        assert_eq!(result.len(), 4997);
+        assert_eq!(map, "* 111.222.333/444.555.666/777.888.999: Hello World\n");
+    }
+
+    #[test]
     fn test_phext_index() {
         let example = "first scroll\x17second scroll\x18second section\x19second chapter\x1Abook 2\x1Cvolume 2\x1Dcollection 2\x1Eseries 2\x1Fshelf 2\x01library 2";
         let result = phext::index(example);
