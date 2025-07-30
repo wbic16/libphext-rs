@@ -637,6 +637,8 @@ pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// errata: libphext-py opted for ranges that operate on a stack of positioned scrolls
+/// this method applies the range edit to subspace directly...we probably need both
 pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
   let bytes = phext.as_bytes();
   let parts_start = get_subspace_coordinates(bytes, location.start);
