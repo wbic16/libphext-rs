@@ -1009,10 +1009,7 @@ pub fn subtract(left: &str, right: &str) -> String {
   let max = pr.len();
   let mut coord = default_coordinate();
   for token in pl {
-    let mut do_append = false;
-    if pri == max {
-      do_append = true;
-    }
+    let mut do_append = pri == max;
 
     if pri < max {
       let compare = pr[pri].clone();
