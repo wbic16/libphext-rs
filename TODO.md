@@ -1,6 +1,3 @@
-* content checksums
-  * incorporate the content soundex from raap
-    see: https://phext.io/api.php?seed=raap&token=research&coordinate=1.1.1/1.1.1/1.1.2
 * support common file formats
   * tar
   * zip
@@ -13,10 +10,7 @@
   we could define a phext-based mask to assist with indexing
 * hierarchical mobs
 * DB emulation
-* fast indexing
-  * checksum forking: record expected offsets and checksums in .checksum files
-  * hierarchy map in memory
-  * memory-mapped I/O
+* memory-mapped I/O
 * investigate data sources
   * https://huggingface.co/learn/nlp-course/chapter2/4?fw=pt
   * https://commoncrawl.org/get-started
