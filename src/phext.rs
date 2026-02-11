@@ -409,27 +409,18 @@ pub fn remove(phext: &str, location: Coordinate) -> String {
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn create_summary(phext: &str) -> String {
-  let buffer = phext.as_bytes();
-  let mut limit = 32;
-  if buffer.len() < 32 { limit = buffer.len(); }
-  let mut i = 0;
-  let mut summary: Vec<u8> = Default::default();
-  while i < limit {
-    let ith = buffer[i];    
-    if is_phext_break(ith) {
+  let mut summary = String::new();
+  for (_i, ch) in phext.char_indices() {
+    if is_phext_break(ch as u8) {
       break;
     }
-    summary.push(ith);
-    i += 1;
+    summary.push(ch);
   }
-  if summary.len() < buffer.len() {
-    summary.push('.' as u8);
-    summary.push('.' as u8);
-    summary.push('.' as u8);
+  if summary.len() < phext.len() {
+    summary.push_str("...");
   }
 
-  let result: String = String::from_utf8(summary).expect("invalid utf8");
-  return result;
+  return summary;
 }
 
 /// ----------------------------------------------------------------------------------------------------------

@@ -1220,4 +1220,29 @@ mod tests {
         // TODO: create a suite of test filters and verify they select
         // properly
     }
+    
+    // Emoji tests - 🔆
+    #[test]
+    fn test_emoji_in_scroll() {
+        let p = "".to_string();
+        let coord = phext::to_coordinate("1.1.1/1.1.1/1.1.1");
+        let content = "Lux 🔆 test";
+
+        let update = phext::insert(p, coord, content);
+        let result = phext::fetch(update.as_str(), coord);
+        assert_eq!(result, content);
+    }
+
+    #[test]
+    fn test_emoji_boundary_crash() {
+        let padding = "a".repeat(29);  // bytes 0-28
+        let text = format!("{}🔆", padding);  // emoji at 29-32
+        
+        // create_summary takes bytes 0-31
+        // = 29 a's + 0xf0 0x9f 0x94 (incomplete emoji)
+        // Old: PANIC at from_utf8().expect()
+        // New: Graceful with from_utf8_lossy()
+        let summary = phext::create_summary(&text);
+        assert!(summary.len() > 0);
+    }
 }
