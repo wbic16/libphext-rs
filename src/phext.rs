@@ -135,7 +135,7 @@ pub const ADDRESS_MACRO_ALT: u8 = b';';   // also allow ';' for url encoding
 ///
 /// The large-scale Z arm of a phext coordinate (see `Coordinate` below)
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Hash, Debug, Copy, Clone)]
 pub struct ZCoordinate {
   pub library: usize,
   pub shelf: usize,
@@ -162,7 +162,7 @@ impl std::fmt::Display for ZCoordinate {
 ///
 /// The large-scale Y arm of a phext coordinate (see `Coordinate` below)
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Hash, Debug, Copy, Clone)]
 pub struct YCoordinate {
   pub collection: usize,
   pub volume: usize,
@@ -189,7 +189,7 @@ impl std::fmt::Display for YCoordinate {
 ///
 /// The large-scale X arm of a phext coordinate (see `Coordinate` below)
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Hash, Debug, Copy, Clone)]
 pub struct XCoordinate {
   pub chapter: usize,
   pub section: usize,
@@ -223,7 +223,7 @@ impl std::fmt::Display for XCoordinate {
 /// Y - this arm contains the collection (y3), volume (y2), and book (y1) dimensions
 /// X - this arm contains the chapter (x3), section (x2), and scroll (x1) dimensions
 /// ----------------------------------------------------------------------------------------------------------
-#[derive(Default, Debug, PartialEq, PartialOrd, Copy, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Hash, Copy, Clone)]
 pub struct Coordinate {
   pub z: ZCoordinate,
   pub y: YCoordinate,
