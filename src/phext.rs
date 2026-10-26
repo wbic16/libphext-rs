@@ -336,71 +336,64 @@ pub fn check_for_cowbell(phext: &str) -> bool {
 ///
 /// finds the start and end offsets for the given coordinate
 ///
-/// The walker only moves on a dimension break, so its comparisons with `target` are redone only at the
-/// start and right after a break, and the scan stops once the end is known (stage 2): nothing after
-/// that point can change the result. Earlier versions compared full coordinates on every byte and
-/// always scanned to the end of the document.
+/// Returns `(start, end, best)`:
+/// - when the document reaches `target`, `start..end` is that scroll's text (empty if it has none) and
+///   `best` is `target`;
+/// - otherwise `start == end` is where the scroll would go: just before the break that steps past
+///   `target`, or the end of the document. `best` is the coordinate in effect there, so writing breaks
+///   from `best` up to `target` and then the text places it correctly.
+///
+/// The walker only moves on a dimension break, so it is compared with `target` only at the start and
+/// after each break, and the scan stops as soon as it steps past `target`.
+///
+/// Earlier versions returned `start = 0` for a missing coordinate that falls between two scrolls, so
+/// `fetch`, `replace`, and `remove` acted on the scroll before it, and they missed a scroll reached only
+/// by breaks at the very end of the document.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, usize, Coordinate) {
   let mut walker: Coordinate = default_coordinate();
   let mut best: Coordinate = default_coordinate();
-  let mut subspace_index: usize = 0;
-  let mut start: usize = 0;
-  let mut end: usize = 0;
-  let mut stage = 0;
+  let mut found: Option<usize> = None;
   let max = subspace.len();
+  let mut position: usize = 0;
   let mut moved = true;
 
-  while subspace_index < max {
-    let next = subspace[subspace_index];
-
-    if moved {
-      if stage == 0 {
-        if walker == target {
-          stage = 1;
-          start = subspace_index;
-          best = walker;
-        }
-        if walker < target {
-          best = walker;
-        }
-      }
-
-      if stage < 2 && walker > target {
-        if stage == 0 {
-          start = subspace_index - 1;
-        }
-        end = subspace_index - 1;
-        stage = 2;
-        break;
+  loop {
+    // `walker` is the coordinate in effect at `position`
+    if moved && found.is_none() {
+      if walker == target {
+        found = Some(position);
+        best = walker;
+      } else if walker < target {
+        best = walker;
+      } else {
+        // before the first scroll: `target` sorts ahead of 1.1.1/1.1.1/1.1.1
+        return (position, position, best);
       }
       moved = false;
     }
+    if position == max {
+      break;
+    }
 
+    let next = subspace[position];
     if is_dimension_break(next) {
       apply_break(&mut walker, next);
       moved = true;
       if walker > target {
-        end = subspace_index;
-        stage = 2;
-        break;
+        return match found {
+          Some(start) => (start, position, best),
+          None => (position, position, best),
+        };
       }
     }
-
-    subspace_index += 1;
+    position += 1;
   }
 
-  if stage == 1 && walker == target {
-    end = max;
-    stage = 2;
+  match found {
+    Some(start) => (start, max, best),
+    None => (max, max, best),
   }
-
-  if stage == 0 {
-    start = max;
-    end = max;
-  }
-
-  return (start, end, best);
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -413,7 +406,8 @@ pub fn remove(phext: &str, location: Coordinate) -> String {
 pub fn create_summary(phext: &str) -> String {
   let mut summary = String::new();
   for (_i, ch) in phext.char_indices() {
-    if is_phext_break(ch as u8) {
+    // only ASCII characters can be breaks: `ch as u8` would read U+010A as a line break
+    if ch.is_ascii() && is_phext_break(ch as u8) {
       break;
     }
     summary.push(ch);
@@ -550,27 +544,21 @@ pub fn index(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+///
+/// The offset of the scroll at `coord`, or of the last scroll before it. 0 when no scroll comes at or before
+/// `coord` (earlier versions panicked there).
 pub fn offset(phext: &str, coord: Coordinate) -> usize {
-  let mut output = index_phokens(phext);
+  let output = index_phokens(phext);
 
-  let mut best = default_coordinate();
-  let mut matched = false;
-  let mut fetch_coord = coord;
-  for phoken in output.clone() {
-    if phoken.coord <= coord {
-      best = phoken.coord;
+  let mut result: usize = 0;
+  for phoken in output {
+    if phoken.coord > coord {
+      break;
     }
-    if phoken.coord == coord {
-      matched = true;
-    }
+    result = phoken.scroll.parse::<usize>().unwrap_or(result);
   }
 
-  if matched == false {
-    fetch_coord = best;
-  }
-  let index = dephokenize(&mut output);
-  
-  return fetch(index.as_str(), fetch_coord).parse::<usize>().unwrap();
+  return result;
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -636,11 +624,8 @@ pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
   let bytes = phext.as_bytes();
   let parts_start = get_subspace_coordinates(bytes, location.start);
   let parts_end = get_subspace_coordinates(bytes, location.end);
-  println!("Start: {} vs {}", location.start, parts_start.2.to_string());
-  println!("End: {} vs {}", location.end, parts_end.2.to_string());
   let start: usize = parts_start.0;
   let mut end: usize = parts_end.1;
-  println!("Subspace start: {}, end: {}", start, end);
 
   let text: std::slice::Iter<u8> = scroll.as_bytes().iter();
   let max = bytes.len();
@@ -1063,18 +1048,15 @@ pub fn subtract(left: &str, right: &str) -> String {
   let max = pr.len();
   let mut coord = default_coordinate();
   for token in pl {
-    let mut do_append = pri == max;
-
-    if pri < max {
-      let compare = pr[pri].clone();
-      if token.coord < compare.coord {
-        do_append = true;
-      } else if token.coord == compare.coord {
-        pri += 1;
-      }
+    if token.scroll.is_empty() {
+      continue;
     }
-
-    if do_append {
+    // both lists are in coordinate order: skip right-hand scrolls that come before this one
+    while pri < max && pr[pri].coord < token.coord {
+      pri += 1;
+    }
+    let masked = pri < max && pr[pri].coord == token.coord && !pr[pri].scroll.is_empty();
+    if !masked {
       append_scroll(&mut result, &token, coord);
       coord = token.coord;
     }

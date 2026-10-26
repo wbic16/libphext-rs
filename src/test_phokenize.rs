@@ -85,62 +85,6 @@ mod tests {
         }
     }
 
-    /// The earlier get_subspace_coordinates: full comparisons on every byte, always to the end.
-    fn subspace_reference(subspace: &[u8], target: phext::Coordinate) -> (usize, usize, phext::Coordinate) {
-        let mut walker = phext::default_coordinate();
-        let mut best = phext::default_coordinate();
-        let mut subspace_index: usize = 0;
-        let mut start: usize = 0;
-        let mut end: usize = 0;
-        let mut stage = 0;
-        let max = subspace.len();
-        while subspace_index < max {
-            let next = subspace[subspace_index];
-            let compare = next as char;
-            if stage == 0 {
-                if walker == target {
-                    stage = 1;
-                    start = subspace_index;
-                    best = walker;
-                }
-                if walker < target {
-                    best = walker;
-                }
-            }
-            if stage < 2 && walker > target {
-                if stage == 0 {
-                    start = subspace_index - 1;
-                }
-                end = subspace_index - 1;
-                stage = 2;
-            }
-            if phext::is_phext_break(next) {
-                if compare == phext::SCROLL_BREAK { walker.scroll_break(); }
-                if compare == phext::SECTION_BREAK { walker.section_break(); }
-                if compare == phext::CHAPTER_BREAK { walker.chapter_break(); }
-                if compare == phext::BOOK_BREAK { walker.book_break(); }
-                if compare == phext::VOLUME_BREAK { walker.volume_break(); }
-                if compare == phext::COLLECTION_BREAK { walker.collection_break(); }
-                if compare == phext::SERIES_BREAK { walker.series_break(); }
-                if compare == phext::SHELF_BREAK { walker.shelf_break(); }
-                if compare == phext::LIBRARY_BREAK { walker.library_break(); }
-            }
-            if stage < 2 && walker > target {
-                end = subspace_index;
-                stage = 2;
-            }
-            subspace_index += 1;
-        }
-        if stage == 1 && walker == target {
-            end = max;
-        }
-        if stage == 0 {
-            start = max;
-            end = max;
-        }
-        (start, end, best)
-    }
-
     fn subspace_targets(doc: &str, rng: &mut Lcg) -> Vec<phext::Coordinate> {
         // every scroll's own coordinate, its neighbours, and some arbitrary ones
         let mut targets: Vec<phext::Coordinate> = Vec::new();
@@ -165,28 +109,106 @@ mod tests {
         targets
     }
 
-    #[test]
-    fn subspace_coordinates_match_the_per_byte_scan() {
-        let mut rng = Lcg(0xc0de);
+    /// The non-empty scrolls of a document, as `explode` sees them.
+    fn content(doc: &str) -> std::collections::BTreeMap<String, String> {
+        phext::explode(doc)
+            .into_iter()
+            .filter(|(_, text)| !text.is_empty())
+            .map(|(coord, text)| (coord.to_string(), text))
+            .collect()
+    }
+
+    fn documents(seed: u64, count: usize) -> Vec<String> {
+        let mut rng = Lcg(seed);
         let mut docs = edge_cases();
-        for _ in 0..1_500 {
+        docs.extend([
+            "a\x18b\x19c".to_string(),
+            "a\x17b\x17".to_string(),
+            "x\x17".to_string(),
+            "\x19\x1aa".to_string(),
+            "a\x18b\x19c\x1ad\x1ce\x1df\x1eg\x1fh\x01i".to_string(),
+        ]);
+        for _ in 0..count {
             docs.push(random_doc(&mut rng));
         }
         if let Ok(helios) = std::fs::read_to_string("regression-1-helios.phext") {
             docs.push(helios);
         }
-        for doc in docs {
-            let bytes = doc.as_bytes();
+        docs
+    }
+
+    /// fetch, replace, insert, and remove each act on exactly the scroll at the target coordinate,
+    /// whether it holds text, is empty, falls between two scrolls, or lies past the end.
+    #[test]
+    fn edits_act_on_exactly_the_target_scroll() {
+        let mut rng = Lcg(0xc0de);
+        for doc in documents(0xc0de, 1_500) {
+            let before = content(&doc);
             for target in subspace_targets(&doc, &mut rng) {
-                let (s, e, b) = phext::get_subspace_coordinates(bytes, target);
-                let (rs, re, rb) = subspace_reference(bytes, target);
-                assert_eq!(
-                    (s, e, b.to_string()),
-                    (rs, re, rb.to_string()),
-                    "{doc:?} at {target}"
-                );
+                let key = target.to_string();
+                let current = before.get(&key).cloned().unwrap_or_default();
+
+                assert_eq!(phext::fetch(&doc, target), current, "fetch {doc:?} at {key}");
+
+                let mut want = before.clone();
+                want.insert(key.clone(), "X".to_string());
+                assert_eq!(content(&phext::replace(&doc, target, "X")), want, "replace {doc:?} at {key}");
+
+                let mut want = before.clone();
+                want.insert(key.clone(), format!("{current}Y"));
+                assert_eq!(content(&phext::insert(doc.clone(), target, "Y")), want, "insert {doc:?} at {key}");
+
+                let mut want = before.clone();
+                want.remove(&key);
+                assert_eq!(content(&phext::remove(&doc, target)), want, "remove {doc:?} at {key}");
+
+                let _ = phext::offset(&doc, target);
             }
         }
+    }
+
+    #[test]
+    fn missing_coordinates_between_scrolls_are_left_alone() {
+        let doc = "a\x18b\x19c";
+        let between = phext::to_coordinate("1.1.1/1.1.1/1.1.2");
+        assert_eq!(phext::fetch(doc, between), "");
+        assert_eq!(phext::replace(doc, between, "X"), "a\x17X\x18b\x19c");
+        assert_eq!(phext::insert(doc.to_string(), between, "Y"), "a\x17Y\x18b\x19c");
+        assert_eq!(phext::remove(doc, between), doc);
+        let after = phext::to_coordinate("1.1.1/1.1.1/1.1.2");
+        assert_eq!(phext::insert("x\x17".to_string(), after, "Y"), "x\x17Y");
+        assert_eq!(phext::fetch("a\x17b\x17", after), "b");
+    }
+
+    #[test]
+    fn subtract_removes_only_scrolls_with_content_on_the_right() {
+        let docs = documents(0x5b7, 1_000);
+        for (index, left) in docs.iter().enumerate() {
+            let right = &docs[(index + 1) % docs.len()];
+            let mask = content(right);
+            let want: std::collections::BTreeMap<String, String> = content(left)
+                .into_iter()
+                .filter(|(coord, _)| !mask.contains_key(coord))
+                .collect();
+            assert_eq!(content(&phext::subtract(left, right)), want, "{left:?} - {right:?}");
+        }
+        assert_eq!(phext::subtract("\x17\x17lead", "a\x18b"), "\x17\x17lead");
+    }
+
+    #[test]
+    fn offset_does_not_panic_before_the_first_scroll() {
+        assert_eq!(phext::offset("\x19\x1aa", phext::to_coordinate("1.1.1/1.1.1/1.1.1")), 0);
+        assert_eq!(phext::offset("", phext::to_coordinate("2.2.2/2.2.2/2.2.2")), 0);
+        assert_eq!(phext::offset("ab\x17cd", phext::to_coordinate("1.1.1/1.1.1/1.1.2")), 3);
+        assert_eq!(phext::offset("ab\x17cd", phext::to_coordinate("1.1.1/1.1.1/1.1.9")), 3);
+    }
+
+    #[test]
+    fn summaries_keep_multibyte_characters_whole() {
+        // U+010A's low byte is 0x0A, a line break
+        assert_eq!(phext::create_summary("\u{010A}bc"), "\u{010A}bc");
+        assert_eq!(phext::create_summary("日本\x17rest"), "日本...");
+        assert_eq!(phext::create_summary("one\ntwo"), "one...");
     }
 
     #[test]
