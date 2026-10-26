@@ -335,6 +335,11 @@ pub fn check_for_cowbell(phext: &str) -> bool {
 /// @fn get_subspace_coordinates
 ///
 /// finds the start and end offsets for the given coordinate
+///
+/// The walker only moves on a dimension break, so its comparisons with `target` are redone only at the
+/// start and right after a break, and the scan stops once the end is known (stage 2): nothing after
+/// that point can change the result. Earlier versions compared full coordinates on every byte and
+/// always scanned to the end of the document.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, usize, Coordinate) {
   let mut walker: Coordinate = default_coordinate();
@@ -344,45 +349,42 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
   let mut end: usize = 0;
   let mut stage = 0;
   let max = subspace.len();
+  let mut moved = true;
 
   while subspace_index < max {
     let next = subspace[subspace_index];
-    let compare = next as char;
 
-    if stage == 0 {
-      if walker == target {
-        stage = 1;
-        start = subspace_index;
-        best = walker;
-      }
-      if walker < target {
-        best = walker;
-      }
-    }
-
-    if stage < 2 && walker > target {
+    if moved {
       if stage == 0 {
-        start = subspace_index - 1;
+        if walker == target {
+          stage = 1;
+          start = subspace_index;
+          best = walker;
+        }
+        if walker < target {
+          best = walker;
+        }
       }
-      end = subspace_index - 1;
-      stage = 2;
+
+      if stage < 2 && walker > target {
+        if stage == 0 {
+          start = subspace_index - 1;
+        }
+        end = subspace_index - 1;
+        stage = 2;
+        break;
+      }
+      moved = false;
     }
 
-    if is_phext_break(next) {
-      if compare == SCROLL_BREAK     { walker.scroll_break();     }
-      if compare == SECTION_BREAK    { walker.section_break();    }
-      if compare == CHAPTER_BREAK    { walker.chapter_break();    }
-      if compare == BOOK_BREAK       { walker.book_break();       }
-      if compare == VOLUME_BREAK     { walker.volume_break();     }
-      if compare == COLLECTION_BREAK { walker.collection_break(); }
-      if compare == SERIES_BREAK     { walker.series_break();     }
-      if compare == SHELF_BREAK      { walker.shelf_break();      }
-      if compare == LIBRARY_BREAK    { walker.library_break();    }
-    }
-
-    if stage < 2 && walker > target {
-      end = subspace_index;
-      stage = 2;
+    if is_dimension_break(next) {
+      apply_break(&mut walker, next);
+      moved = true;
+      if walker > target {
+        end = subspace_index;
+        stage = 2;
+        break;
+      }
     }
 
     subspace_index += 1;
