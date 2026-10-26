@@ -335,6 +335,11 @@ pub fn check_for_cowbell(phext: &str) -> bool {
 /// @fn get_subspace_coordinates
 ///
 /// finds the start and end offsets for the given coordinate
+///
+/// The walker only moves on a dimension break, so its comparisons with `target` are redone only at the
+/// start and right after a break, and the scan stops once the end is known (stage 2): nothing after
+/// that point can change the result. Earlier versions compared full coordinates on every byte and
+/// always scanned to the end of the document.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, usize, Coordinate) {
   let mut walker: Coordinate = default_coordinate();
@@ -344,45 +349,42 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
   let mut end: usize = 0;
   let mut stage = 0;
   let max = subspace.len();
+  let mut moved = true;
 
   while subspace_index < max {
     let next = subspace[subspace_index];
-    let compare = next as char;
 
-    if stage == 0 {
-      if walker == target {
-        stage = 1;
-        start = subspace_index;
-        best = walker;
-      }
-      if walker < target {
-        best = walker;
-      }
-    }
-
-    if stage < 2 && walker > target {
+    if moved {
       if stage == 0 {
-        start = subspace_index - 1;
+        if walker == target {
+          stage = 1;
+          start = subspace_index;
+          best = walker;
+        }
+        if walker < target {
+          best = walker;
+        }
       }
-      end = subspace_index - 1;
-      stage = 2;
+
+      if stage < 2 && walker > target {
+        if stage == 0 {
+          start = subspace_index - 1;
+        }
+        end = subspace_index - 1;
+        stage = 2;
+        break;
+      }
+      moved = false;
     }
 
-    if is_phext_break(next) {
-      if compare == SCROLL_BREAK     { walker.scroll_break();     }
-      if compare == SECTION_BREAK    { walker.section_break();    }
-      if compare == CHAPTER_BREAK    { walker.chapter_break();    }
-      if compare == BOOK_BREAK       { walker.book_break();       }
-      if compare == VOLUME_BREAK     { walker.volume_break();     }
-      if compare == COLLECTION_BREAK { walker.collection_break(); }
-      if compare == SERIES_BREAK     { walker.series_break();     }
-      if compare == SHELF_BREAK      { walker.shelf_break();      }
-      if compare == LIBRARY_BREAK    { walker.library_break();    }
-    }
-
-    if stage < 2 && walker > target {
-      end = subspace_index;
-      stage = 2;
+    if is_dimension_break(next) {
+      apply_break(&mut walker, next);
+      moved = true;
+      if walker > target {
+        end = subspace_index;
+        stage = 2;
+        break;
+      }
     }
 
     subspace_index += 1;
@@ -763,19 +765,82 @@ pub fn next_scroll(phext: &str, start: Coordinate) -> (PositionedScroll, Coordin
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @fn is_dimension_break
+///
+/// true for the nine delimiters that move to a new scroll (line breaks stay inside a scroll)
+/// ----------------------------------------------------------------------------------------------------------
+fn is_dimension_break(byte: u8) -> bool {
+  return byte == SCROLL_BREAK as u8 ||
+         byte == SECTION_BREAK as u8 ||
+         byte == CHAPTER_BREAK as u8 ||
+         byte == BOOK_BREAK as u8 ||
+         byte == VOLUME_BREAK as u8 ||
+         byte == COLLECTION_BREAK as u8 ||
+         byte == SERIES_BREAK as u8 ||
+         byte == SHELF_BREAK as u8 ||
+         byte == LIBRARY_BREAK as u8;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn apply_break
+///
+/// advances `location` across one dimension break
+/// ----------------------------------------------------------------------------------------------------------
+fn apply_break(location: &mut Coordinate, byte: u8) {
+  let test = byte as char;
+  if test == SCROLL_BREAK     { location.scroll_break();     }
+  if test == SECTION_BREAK    { location.section_break();    }
+  if test == CHAPTER_BREAK    { location.chapter_break();    }
+  if test == BOOK_BREAK       { location.book_break();       }
+  if test == VOLUME_BREAK     { location.volume_break();     }
+  if test == COLLECTION_BREAK { location.collection_break(); }
+  if test == SERIES_BREAK     { location.series_break();     }
+  if test == SHELF_BREAK      { location.shelf_break();      }
+  if test == LIBRARY_BREAK    { location.library_break();    }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn phokenize
 ///
 /// Transforms a packed phext buffer into a phext token (phoken) stream
+///
+/// One pass over the bytes. Each step matches a call to `next_scroll`: skip leading breaks, take a run
+/// of text, then consume the break that ends it. Earlier versions called `next_scroll` in a loop, which
+/// copied the rest of the document for every scroll and made this quadratic in the document size.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn phokenize(phext: &str) -> Vec<PositionedScroll> {
   let mut result: Vec<PositionedScroll> = Vec::new();
+  let bytes = phext.as_bytes();
+  let max = bytes.len();
   let mut coord = default_coordinate();
-  let mut temp: String = phext.to_string();
+  let mut pi: usize = 0;
   loop {
-    let item: PositionedScroll;
-    (item, coord, temp) = next_scroll(temp.as_str(), coord);
-    result.push(item);
-    if temp.len() == 0 { break; }
+    let start = coord;
+    let mut begin = start;
+    let mut text_start: Option<usize> = None;
+    let mut text_end = max;
+    while pi < max {
+      let byte = bytes[pi];
+      if is_dimension_break(byte) {
+        apply_break(&mut coord, byte);
+        if text_start.is_some() {
+          text_end = pi;
+          pi += 1;
+          break;
+        }
+      } else if text_start.is_none() {
+        text_start = Some(pi);
+        begin = coord;
+      }
+      pi += 1;
+    }
+    let scroll = match text_start {
+      // breaks are ASCII, so these offsets always fall on character boundaries
+      Some(first) => phext[first..text_end].to_string(),
+      None => String::new(),
+    };
+    result.push(PositionedScroll{coord: begin, scroll});
+    if pi >= max { break; }
   }
 
   return result;
@@ -833,12 +898,12 @@ pub fn merge(left: &str, right: &str) -> String {
     let pick_right = have_right && (have_left == false || tr[tri].coord <= tl[tli].coord);
 
     if pick_left {
-      result.push_str(&append_scroll(tl[tli].clone(), coord));
+      append_scroll(&mut result, &tl[tli], coord);
       coord = tl[tli].coord;
       tli += 1;
     }
     if pick_right {
-      result.push_str(&append_scroll(tr[tri].clone(), coord));
+      append_scroll(&mut result, &tr[tri], coord);
       coord = tr[tri].coord;
       tri += 1;
     }
@@ -960,7 +1025,7 @@ fn dephokenize(tokens: &mut Vec<PositionedScroll>) -> String {
   let mut coord = default_coordinate();
   for ps in tokens {
     if ps.scroll.len() > 0 {
-      result.push_str(&append_scroll(ps.clone(), coord));
+      append_scroll(&mut result, ps, coord);
     }
     coord = ps.coord;
   }
@@ -968,8 +1033,7 @@ fn dephokenize(tokens: &mut Vec<PositionedScroll>) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-fn append_scroll(token: PositionedScroll, mut coord: Coordinate) -> String {
-  let mut output: String = Default::default();
+fn append_scroll(output: &mut String, token: &PositionedScroll, mut coord: Coordinate) {
   while coord < token.coord {
     if coord.z.library < token.coord.z.library       { output.push(LIBRARY_BREAK);    coord.library_break();    continue; }
     if coord.z.shelf < token.coord.z.shelf           { output.push(SHELF_BREAK);      coord.shelf_break();      continue; }
@@ -982,7 +1046,6 @@ fn append_scroll(token: PositionedScroll, mut coord: Coordinate) -> String {
     if coord.x.scroll < token.coord.x.scroll         { output.push(SCROLL_BREAK);     coord.scroll_break();     continue; }
   }
   output.push_str(&token.scroll);
-  return output;
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1012,7 +1075,7 @@ pub fn subtract(left: &str, right: &str) -> String {
     }
 
     if do_append {
-      result.push_str(&append_scroll(token.clone(), coord));
+      append_scroll(&mut result, &token, coord);
       coord = token.coord;
     }
   }
