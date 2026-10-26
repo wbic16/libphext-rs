@@ -763,19 +763,82 @@ pub fn next_scroll(phext: &str, start: Coordinate) -> (PositionedScroll, Coordin
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @fn is_dimension_break
+///
+/// true for the nine delimiters that move to a new scroll (line breaks stay inside a scroll)
+/// ----------------------------------------------------------------------------------------------------------
+fn is_dimension_break(byte: u8) -> bool {
+  return byte == SCROLL_BREAK as u8 ||
+         byte == SECTION_BREAK as u8 ||
+         byte == CHAPTER_BREAK as u8 ||
+         byte == BOOK_BREAK as u8 ||
+         byte == VOLUME_BREAK as u8 ||
+         byte == COLLECTION_BREAK as u8 ||
+         byte == SERIES_BREAK as u8 ||
+         byte == SHELF_BREAK as u8 ||
+         byte == LIBRARY_BREAK as u8;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn apply_break
+///
+/// advances `location` across one dimension break
+/// ----------------------------------------------------------------------------------------------------------
+fn apply_break(location: &mut Coordinate, byte: u8) {
+  let test = byte as char;
+  if test == SCROLL_BREAK     { location.scroll_break();     }
+  if test == SECTION_BREAK    { location.section_break();    }
+  if test == CHAPTER_BREAK    { location.chapter_break();    }
+  if test == BOOK_BREAK       { location.book_break();       }
+  if test == VOLUME_BREAK     { location.volume_break();     }
+  if test == COLLECTION_BREAK { location.collection_break(); }
+  if test == SERIES_BREAK     { location.series_break();     }
+  if test == SHELF_BREAK      { location.shelf_break();      }
+  if test == LIBRARY_BREAK    { location.library_break();    }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn phokenize
 ///
 /// Transforms a packed phext buffer into a phext token (phoken) stream
+///
+/// One pass over the bytes. Each step matches a call to `next_scroll`: skip leading breaks, take a run
+/// of text, then consume the break that ends it. Earlier versions called `next_scroll` in a loop, which
+/// copied the rest of the document for every scroll and made this quadratic in the document size.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn phokenize(phext: &str) -> Vec<PositionedScroll> {
   let mut result: Vec<PositionedScroll> = Vec::new();
+  let bytes = phext.as_bytes();
+  let max = bytes.len();
   let mut coord = default_coordinate();
-  let mut temp: String = phext.to_string();
+  let mut pi: usize = 0;
   loop {
-    let item: PositionedScroll;
-    (item, coord, temp) = next_scroll(temp.as_str(), coord);
-    result.push(item);
-    if temp.len() == 0 { break; }
+    let start = coord;
+    let mut begin = start;
+    let mut text_start: Option<usize> = None;
+    let mut text_end = max;
+    while pi < max {
+      let byte = bytes[pi];
+      if is_dimension_break(byte) {
+        apply_break(&mut coord, byte);
+        if text_start.is_some() {
+          text_end = pi;
+          pi += 1;
+          break;
+        }
+      } else if text_start.is_none() {
+        text_start = Some(pi);
+        begin = coord;
+      }
+      pi += 1;
+    }
+    let scroll = match text_start {
+      // breaks are ASCII, so these offsets always fall on character boundaries
+      Some(first) => phext[first..text_end].to_string(),
+      None => String::new(),
+    };
+    result.push(PositionedScroll{coord: begin, scroll});
+    if pi >= max { break; }
   }
 
   return result;
@@ -833,12 +896,12 @@ pub fn merge(left: &str, right: &str) -> String {
     let pick_right = have_right && (have_left == false || tr[tri].coord <= tl[tli].coord);
 
     if pick_left {
-      result.push_str(&append_scroll(tl[tli].clone(), coord));
+      append_scroll(&mut result, &tl[tli], coord);
       coord = tl[tli].coord;
       tli += 1;
     }
     if pick_right {
-      result.push_str(&append_scroll(tr[tri].clone(), coord));
+      append_scroll(&mut result, &tr[tri], coord);
       coord = tr[tri].coord;
       tri += 1;
     }
@@ -960,7 +1023,7 @@ fn dephokenize(tokens: &mut Vec<PositionedScroll>) -> String {
   let mut coord = default_coordinate();
   for ps in tokens {
     if ps.scroll.len() > 0 {
-      result.push_str(&append_scroll(ps.clone(), coord));
+      append_scroll(&mut result, ps, coord);
     }
     coord = ps.coord;
   }
@@ -968,8 +1031,7 @@ fn dephokenize(tokens: &mut Vec<PositionedScroll>) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-fn append_scroll(token: PositionedScroll, mut coord: Coordinate) -> String {
-  let mut output: String = Default::default();
+fn append_scroll(output: &mut String, token: &PositionedScroll, mut coord: Coordinate) {
   while coord < token.coord {
     if coord.z.library < token.coord.z.library       { output.push(LIBRARY_BREAK);    coord.library_break();    continue; }
     if coord.z.shelf < token.coord.z.shelf           { output.push(SHELF_BREAK);      coord.shelf_break();      continue; }
@@ -982,7 +1044,6 @@ fn append_scroll(token: PositionedScroll, mut coord: Coordinate) -> String {
     if coord.x.scroll < token.coord.x.scroll         { output.push(SCROLL_BREAK);     coord.scroll_break();     continue; }
   }
   output.push_str(&token.scroll);
-  return output;
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1012,7 +1073,7 @@ pub fn subtract(left: &str, right: &str) -> String {
     }
 
     if do_append {
-      result.push_str(&append_scroll(token.clone(), coord));
+      append_scroll(&mut result, &token, coord);
       coord = token.coord;
     }
   }
