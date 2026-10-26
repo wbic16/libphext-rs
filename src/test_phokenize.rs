@@ -127,6 +127,8 @@ mod tests {
             "x\x17".to_string(),
             "\x19\x1aa".to_string(),
             "a\x18b\x19c\x1ad\x1ce\x1df\x1eg\x1fh\x01i".to_string(),
+            // library and shelf saturate at 999, so the last few breaks of each run do not move
+            format!("{}deep{}deeper", "\x01".repeat(1001), "\x1f".repeat(1001)),
         ]);
         for _ in 0..count {
             docs.push(random_doc(&mut rng));

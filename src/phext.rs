@@ -386,6 +386,11 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
           None => (position, position, best),
         };
       }
+      // a break that cannot advance a dimension already at 999 leaves the walker on `target`:
+      // the scroll's text starts after it
+      if found == Some(position) {
+        found = Some(position + 1);
+      }
     }
     position += 1;
   }
