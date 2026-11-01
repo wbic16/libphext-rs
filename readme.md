@@ -39,14 +39,26 @@ The introduction of Large Language Models (LLMs) has accelerated our transition 
 
 ## Build
 
-1. Clone this repo
-2. Install Rust
-3. Run `cargo build`
+Prerequisites: a Rust toolchain (`cargo` on your PATH, or in `$HOME/.cargo/bin`).
+
+1. Clone this repo.
+2. Run `scripts/build.sh` — this runs `cargo build --release`, then prints the exact file list a crates.io publish would upload (`cargo package --list`).
 
 ## Test
 
-1. Complete the build steps above
-2. Run `cargo test`
+Prerequisites: a Rust toolchain, as above.
+
+1. Run `scripts/test.sh` — this runs `cargo test` and propagates its exit code.
+2. ⚠️ Known failure, pre-existing at HEAD: `regressions::regressions::helios_stalled_parse` fails (57 passed, 1 failed). The test expects offset 370; the regression file's first scroll break sits at offset 358. It fails identically on the pristine tree and predates the 0.4.0 changes — it is not a signal that your checkout is broken. It stays visible on purpose: the scripts never hide it.
+
+## Publish (crates.io)
+
+Prerequisites: a crates.io credential — set `CARGO_REGISTRY_TOKEN` in your environment, or run `cargo login` once. Never commit a token.
+
+1. Set the new version in `Cargo.toml`.
+2. Run `scripts/publish.sh` with no environment variables. It runs the test suite (tolerating only the one known failure named above, with a loud warning; any other failure aborts), runs the release build, then runs `cargo publish --dry-run`, prints exactly what would be published (crate name, version, file list), and **stops**. Nothing is published in this step.
+3. Review the printed name, version, and file list.
+4. Run `PUBLISH_CONFIRM=1 scripts/publish.sh`. This repeats steps 1–3 and then runs the real `cargo publish`.
 
 ## Run
 
