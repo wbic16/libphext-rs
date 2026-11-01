@@ -49,7 +49,7 @@ Prerequisites: a Rust toolchain (`cargo` on your PATH, or in `$HOME/.cargo/bin`)
 Prerequisites: a Rust toolchain, as above.
 
 1. Run `scripts/test.sh` — this runs `cargo test` and propagates its exit code.
-2. ⚠️ Known failure, pre-existing at HEAD: `regressions::regressions::helios_stalled_parse` fails (57 passed, 1 failed). The test expects offset 370; the regression file's first scroll break sits at offset 358. It fails identically on the pristine tree and predates the 0.4.0 changes — it is not a signal that your checkout is broken. It stays visible on purpose: the scripts never hide it.
+2. ⚠️ Known failure, pre-existing at HEAD: `regressions::regressions::helios_stalled_parse` fails (57 passed, 1 failed). The test expects offset 370; the regression file's first scroll break sits at offset 358. It fails identically on the pristine tree and predates the 0.4.0 changes — it is not a signal that your checkout is broken. It stays visible on purpose: the scripts never hide it. (One more caution: `test_phokenize::tests::a_large_phext_explodes_in_linear_time` is a wall-clock timing assertion and can flake on a loaded machine; `scripts/publish.sh` retries the suite once, printing both runs, before treating any failure as real.)
 
 ## Publish (crates.io)
 
