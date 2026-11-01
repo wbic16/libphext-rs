@@ -186,8 +186,10 @@ mod tests {
         assert_eq!(c1.y.volume, 4);
         let c1b: bool = c1.validate_coordinate();
         let c2b: bool = c2.validate_coordinate();
-        assert_eq!(c1b, false);
-        assert_eq!(c2b, false);
+        // components above 999 are valid since 0.4.0 removed the cap (before 0.4.0 this
+        // coordinate parsed but failed validation at the library component)
+        assert_eq!(c1b, true);
+        assert_eq!(c2b, true);
     }
 
     #[test]
@@ -212,8 +214,9 @@ mod tests {
         assert_eq!(c3, c4);
         let c3b = c3.validate_coordinate();
         let c4b = c4.validate_coordinate();
-        assert_eq!(c3b, false);
-        assert_eq!(c4b, false);
+        // components above 999 are valid since 0.4.0 removed the cap
+        assert_eq!(c3b, true);
+        assert_eq!(c4b, true);
     }
 
     #[test]
@@ -1231,6 +1234,70 @@ mod tests {
         let update = phext::insert(p, coord, content);
         let result = phext::fetch(update.as_str(), coord);
         assert_eq!(result, content);
+    }
+
+    #[test]
+    fn test_coordinate_above_999_parse_print_round_trip() {
+        // components above the old 999 cap parse, validate, and print unchanged (0.4.0)
+        let address = "1000.1001.1002/1003.1004.1005/1006.1007.1008";
+        let coord = phext::to_coordinate(address);
+        assert_eq!(coord.z.library, 1000);
+        assert_eq!(coord.z.shelf, 1001);
+        assert_eq!(coord.z.series, 1002);
+        assert_eq!(coord.y.collection, 1003);
+        assert_eq!(coord.y.volume, 1004);
+        assert_eq!(coord.y.book, 1005);
+        assert_eq!(coord.x.chapter, 1006);
+        assert_eq!(coord.x.section, 1007);
+        assert_eq!(coord.x.scroll, 1008);
+        assert!(coord.validate_coordinate());
+        assert_eq!(coord.to_string(), address);
+        assert_eq!(coord.to_urlencoded(), "1000.1001.1002;1003.1004.1005;1006.1007.1008");
+
+        let parsed = phext::Coordinate::try_from(address).expect("TryFrom should accept components > 999");
+        assert_eq!(parsed, coord);
+        assert_eq!(parsed.to_string(), address);
+
+        // 0 components are still invalid, exactly as before the cap was removed
+        let zero = phext::to_coordinate("0.1.1/1.1.1/1.1.1");
+        assert!(!zero.validate_coordinate());
+        assert_eq!(zero.to_string(), "");
+    }
+
+    #[test]
+    fn test_scroll_breaks_advance_past_999() {
+        // 1001 scrolls in a row: breaks advance 998 -> 999 -> 1000 -> 1001 without saturating
+        let mut doc = String::new();
+        for i in 1..=1001 {
+            if i > 1 { doc.push(SCROLL_BREAK); }
+            doc.push_str(&format!("s{}", i));
+        }
+        for scroll in [998usize, 999, 1000, 1001] {
+            let coord = phext::to_coordinate(&format!("1.1.1/1.1.1/1.1.{}", scroll));
+            assert_eq!(phext::fetch(&doc, coord), format!("s{}", scroll), "fetch at scroll {}", scroll);
+        }
+        // the walker really reaches those coordinates, in order
+        let parts = phext::phokenize(&doc);
+        assert_eq!(parts.len(), 1001);
+        assert_eq!(parts[997].coord.x.scroll, 998);
+        assert_eq!(parts[998].coord.x.scroll, 999);
+        assert_eq!(parts[999].coord.x.scroll, 1000);
+        assert_eq!(parts[1000].coord.x.scroll, 1001);
+    }
+
+    #[test]
+    fn test_fetch_and_explode_above_999() {
+        // write past the old cap end-to-end, then read it back both ways
+        let coord = phext::to_coordinate("1.1.1/1.1.1/1000.1.1");
+        let doc = phext::replace("", coord, "beyond the cap");
+        assert_eq!(phext::fetch(&doc, coord), "beyond the cap");
+
+        let map = phext::explode(&doc);
+        assert_eq!(map.get(&coord).map(|s| s.as_str()), Some("beyond the cap"));
+
+        // a neighbouring in-range scroll is untouched by the write
+        let first = phext::to_coordinate("1.1.1/1.1.1/1.1.1");
+        assert_eq!(phext::fetch(&doc, first), "");
     }
 
     #[test]

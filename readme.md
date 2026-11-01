@@ -35,6 +35,8 @@ The introduction of Large Language Models (LLMs) has accelerated our transition 
   * this allows us to use coordinates in routes
   * example: z3.z2.z1;y3.y2.y1;x3.x2.x1
 
+> **Dense graphs:** phext is sparse by design. Coordinate components are unbounded, but a fully-populated dense graph contains the product of its dimensions' extents in scrolls — a dense block spanning 1000 in each of 9 dimensions implies 10^27 scrolls. Materializing, exploding, or indexing such a graph costs memory proportional to its populated scroll count. The old 999 cap never protected against this (999^9 was already unreachable); sparsity does. Keep graphs sparse.
+
 ## Build
 
 1. Clone this repo

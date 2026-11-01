@@ -79,7 +79,8 @@ use std::collections::HashMap;
 /// phext constants
 /// ----------------------------------------------------------------------------------------------------------
 pub const COORDINATE_MINIMUM: usize = 1;    // human numbering - we start at 1, not 0
-pub const COORDINATE_MAXIMUM: usize = 1000; // 2 KB pages x 100^9 = 2 million petabytes
+// coordinate components are unbounded as of 0.4.0 (the 999 cap was removed; see the
+// dense-graph warning on `Coordinate` below)
 pub const LIBRARY_BREAK: char = '\x01';    // 11th dimension - replaces start of header
 pub const MORE_COWBELL: char = '\x07';     // i've got a fever, and the only prescription...is more cowbell!
 pub const LINE_BREAK: char = '\x0A';       // same as plain text \o/
@@ -224,6 +225,13 @@ impl std::fmt::Display for XCoordinate {
 /// Z - this arm contains the library (z3), shelf (z2), and series (z1) dimensions
 /// Y - this arm contains the collection (y3), volume (y2), and book (y1) dimensions
 /// X - this arm contains the chapter (x3), section (x2), and scroll (x1) dimensions
+///
+/// Dense graphs: phext is sparse by design. Coordinate components are unbounded, but a
+/// fully-populated dense graph contains the product of its dimensions' extents in
+/// scrolls — a dense block spanning 1000 in each of 9 dimensions implies 10^27 scrolls.
+/// Materializing, exploding, or indexing such a graph costs memory proportional to its
+/// populated scroll count. The old 999 cap never protected against this (999^9 was
+/// already unreachable); sparsity does. Keep graphs sparse.
 /// ----------------------------------------------------------------------------------------------------------
 #[derive(Default, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Copy, Clone)]
 pub struct Coordinate {
@@ -386,8 +394,10 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
           None => (position, position, best),
         };
       }
-      // a break that cannot advance a dimension already at 999 leaves the walker on `target`:
-      // the scroll's text starts after it
+      // since 0.4.0 a break always advances the walker, so a break after `found` steps past
+      // `target` and returns above; this adjustment is retained defensively for any future
+      // break type that might not move the walker (it would leave the walker on `target`,
+      // and the scroll's text would start after the break)
       if found == Some(position) {
         found = Some(position + 1);
       }
@@ -1127,8 +1137,8 @@ pub fn to_coordinate(address: &str) -> Coordinate {
   let mut result: Coordinate = default_coordinate();
 
   let mut index: u8 = 0;
-  let mut value:u32 = 0;
-  let exp:u32 = 10;
+  let mut value:u64 = 0;
+  let exp:u64 = 10;
 
   for next in address.as_bytes() {
     let byte = *next;
@@ -1150,7 +1160,7 @@ pub fn to_coordinate(address: &str) -> Coordinate {
 
     if byte >= 0x30 && byte <= 0x39
     {
-      value = exp * value + ((byte - 0x30) as u32);
+      value = exp * value + ((byte - 0x30) as u64);
       if index == 0 { index = 1; }
     }
   }
@@ -1163,7 +1173,7 @@ pub fn to_coordinate(address: &str) -> Coordinate {
 }
 
 fn validate_dimension_index(index: usize) -> bool {
-  return index >= COORDINATE_MINIMUM && index <= COORDINATE_MAXIMUM;
+  return index >= COORDINATE_MINIMUM;
 }
 
 impl Coordinate {
@@ -1219,12 +1229,7 @@ impl Coordinate {
   ///
   /// ----------------------------------------------------------------------------------------------------------
   fn advance_coordinate(index: usize) -> usize {
-    let next: usize = index + 1;
-    if next < COORDINATE_MAXIMUM {
-      return next;
-    }
-
-    return index; // can't advance beyond the maximum
+    return index + 1; // components are unbounded: advancing never saturates
   }
 
   /// ------------------------------------------------------------------------------------------------------
