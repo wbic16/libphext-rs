@@ -1312,4 +1312,73 @@ mod tests {
         let summary = phext::create_summary(&text);
         assert!(summary.len() > 0);
     }
+
+    #[test]
+    fn test_try_from_valid_addresses_round_trip() {
+        let root = phext::Coordinate::try_from("1.1.1/1.1.1/1.1.1");
+        assert!(root.is_ok());
+        assert_eq!(root.unwrap().to_string(), "1.1.1/1.1.1/1.1.1");
+
+        let mixed = phext::Coordinate::try_from("98.76.54/32.10.1/23.45.67");
+        assert!(mixed.is_ok());
+        assert_eq!(mixed.unwrap().to_string(), "98.76.54/32.10.1/23.45.67");
+
+        // the largest component a usize can hold still parses
+        let biggest = format!("{}.1.1/1.1.1/1.1.1", usize::MAX);
+        let parsed = phext::Coordinate::try_from(biggest.as_str());
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap().z.library, usize::MAX);
+    }
+
+    #[test]
+    fn test_try_from_malformed_components_return_err() {
+        // every case below used to panic inside TryFrom (the components were
+        // parsed with .expect); each must now return Err(PhextParseError).
+        // the nine cases also cover all nine component positions in turn.
+        let cases: [&str; 9] = [
+            "a.1.1/1.1.1/1.1.1",                             // library: alphabetic
+            "1..1/1.1.1/1.1.1",                              // shelf: empty
+            "1.1.-1/1.1.1/1.1.1",                            // series: negative
+            "1.1.1/999999999999999999999999999999.1.1/1.1.1", // collection: overflow (30 digits)
+            "1.1.1/1.x.1/1.1.1",                             // volume: alphabetic
+            "1.1.1/1.1./1.1.1",                              // book: empty
+            "1.1.1/1.1.1/-2.1.1",                            // chapter: negative
+            "1.1.1/1.1.1/1.999999999999999999999999999999.1", // section: overflow (30 digits)
+            "1.1.1/1.1.1/1.1.z",                             // scroll: alphabetic
+        ];
+        for address in cases {
+            let result = phext::Coordinate::try_from(address);
+            assert!(result.is_err(), "expected Err for {address}");
+        }
+    }
+
+    #[test]
+    fn test_try_from_component_spellings() {
+        // Rust's integer parser accepts a leading '+': no panic, value as usual
+        let plus = phext::Coordinate::try_from("+1.1.1/1.1.1/1.1.1");
+        assert!(plus.is_ok());
+        assert_eq!(plus.unwrap().to_string(), "1.1.1/1.1.1/1.1.1");
+
+        // whitespace is not numeric: Err, not a panic
+        assert!(phext::Coordinate::try_from(" 1.1.1/1.1.1/1.1.1").is_err());
+        assert!(phext::Coordinate::try_from("1.1.1/1.1.1/1.1.1 ").is_err());
+        assert!(phext::Coordinate::try_from("1.1.1/1. 1.1/1.1.1").is_err());
+    }
+
+    #[test]
+    fn test_try_from_bad_shapes_return_err() {
+        // shape errors already returned Err before the fix; keep them pinned
+        assert!(phext::Coordinate::try_from("1.1.1/1.1.1").is_err());
+        assert!(phext::Coordinate::try_from("1.1/1.1.1/1.1.1").is_err());
+        assert!(phext::Coordinate::try_from("1.1.1.1/1.1.1/1.1.1").is_err());
+        assert!(phext::Coordinate::try_from("").is_err());
+    }
+
+    #[test]
+    fn test_to_coordinate_long_digit_run_saturates() {
+        // a digit run far beyond u64 used to overflow the accumulator
+        // (panic in debug builds, wrap in release); it now saturates
+        let coord = phext::to_coordinate("999999999999999999999999999999999.1.1/1.1.1/1.1.1");
+        assert_eq!(coord.z.library, usize::MAX);
+    }
 }
