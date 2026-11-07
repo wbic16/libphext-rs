@@ -304,14 +304,18 @@ impl std::convert::TryFrom<&str> for Coordinate {
   type Error = PhextParseError;
 
   fn try_from(value: &str) -> Result<Self, Self::Error> {
-      let parts: Vec<&str> = value.split('/').collect();
+      let mut parts: Vec<&str> = Vec::new();
+      for part in value.split('/') { parts.push(part); }
       let error: PhextParseError = Default::default();
       if parts.len() != 3 {        
         return Err(error);
       }
-      let z: Vec<&str> = parts[0].split('.').collect();
-      let y: Vec<&str> = parts[1].split('.').collect();
-      let x: Vec<&str> = parts[2].split('.').collect();
+      let mut z: Vec<&str> = Vec::new();
+      for part in parts[0].split('.') { z.push(part); }
+      let mut y: Vec<&str> = Vec::new();
+      for part in parts[1].split('.') { y.push(part); }
+      let mut x: Vec<&str> = Vec::new();
+      for part in parts[2].split('.') { x.push(part); }
       if z.len() != 3 || y.len() != 3 || x.len() != 3 {
         return Err(error);
       }
@@ -627,7 +631,8 @@ pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
   if end > max { end = max; }
   let left = &bytes[..start];
   let right = &bytes[end..];
-  let temp:Vec<u8> = left.iter().chain(fixup.iter()).chain(text).chain(right.iter()).cloned().collect();
+  let mut temp: Vec<u8> = Vec::new();
+  for b in left.iter().chain(fixup.iter()).chain(text).chain(right.iter()) { temp.push(*b); }
   let result: String = String::from_utf8(temp).expect("invalid utf8");
   return result;
 }
@@ -647,7 +652,8 @@ pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
   if end > max { end = max; }
   let left = &bytes[..start];
   let right = &bytes[end..];
-  let temp:Vec<u8> = left.iter().chain(text).chain(right.iter()).cloned().collect();
+  let mut temp: Vec<u8> = Vec::new();
+  for b in left.iter().chain(text).chain(right.iter()) { temp.push(*b); }
   let result: String = String::from_utf8(temp).expect("invalid utf8");
   return result;
 }
@@ -936,7 +942,8 @@ pub fn fetch(phext: &str, target: Coordinate) -> String {
   if end > start
   {
     let glyphs: usize = end - start;
-    let temp: Vec<u8> = bytes.iter().skip(start).take(glyphs).cloned().collect();
+    let mut temp: Vec<u8> = Vec::new();
+    for b in bytes.iter().skip(start).take(glyphs) { temp.push(*b); }
     let result: String = String::from_utf8(temp).expect("invalid utf8");
     return result;
   }
