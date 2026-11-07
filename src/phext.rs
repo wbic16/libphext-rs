@@ -946,9 +946,7 @@ pub fn fetch(phext: &str, target: Coordinate) -> String {
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn expand(phext: &str) -> String {
-  let mut copy = phext.to_string().clone();
-  unsafe {
-  let buffer = copy.as_bytes_mut();
+  let mut buffer: Vec<u8> = phext.to_string().into_bytes();
   let max = buffer.len();
   let mut p: usize = 0;
   loop {
@@ -975,17 +973,13 @@ pub fn expand(phext: &str) -> String {
     p += 1;
   }
 
-  let temp: Vec<u8> = buffer.iter().cloned().collect();
-  let result: String = String::from_utf8(temp).expect("invalid utf8");
+  let result: String = String::from_utf8(buffer).expect("invalid utf8");
   return result;
-  }
 }
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn contract(phext: &str) -> String {
-  let mut copy = phext.to_string().clone();
-  unsafe {
-  let buffer = copy.as_bytes_mut();
+  let mut buffer: Vec<u8> = phext.to_string().into_bytes();
   let max = buffer.len();
   let mut p: usize = 0;
   loop {
@@ -1013,10 +1007,8 @@ pub fn contract(phext: &str) -> String {
     p += 1;
   }
 
-  let temp: Vec<u8> = buffer.iter().cloned().collect();
-  let result: String = String::from_utf8(temp).expect("invalid utf8");
+  let result: String = String::from_utf8(buffer).expect("invalid utf8");
   return result;
-  }
 }
 
 /// ----------------------------------------------------------------------------------------------------------
