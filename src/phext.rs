@@ -298,24 +298,38 @@ impl std::fmt::Display for PhextParseError {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// split_on: manual equivalent of str::split(char), matching its semantics exactly (empty segments
+/// and a trailing empty tail are preserved). Exists because str::split is Pattern-generic, and
+/// core's Pattern trait carries a generic associated type that Aeneas cannot translate today.
+/// ----------------------------------------------------------------------------------------------------------
+fn split_on(s: &str, delim: char) -> Vec<&str> {
+  let mut out: Vec<&str> = Vec::new();
+  let mut start: usize = 0;
+  for (i, ch) in s.char_indices() {
+    if ch == delim {
+      out.push(&s[start..i]);
+      start = i + delim.len_utf8();
+    }
+  }
+  out.push(&s[start..]);
+  out
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn std::convert::TryFrom
 /// ----------------------------------------------------------------------------------------------------------
 impl std::convert::TryFrom<&str> for Coordinate {
   type Error = PhextParseError;
 
   fn try_from(value: &str) -> Result<Self, Self::Error> {
-      let mut parts: Vec<&str> = Vec::new();
-      for part in value.split('/') { parts.push(part); }
+      let parts: Vec<&str> = split_on(value, '/');
       let error: PhextParseError = Default::default();
       if parts.len() != 3 {        
         return Err(error);
       }
-      let mut z: Vec<&str> = Vec::new();
-      for part in parts[0].split('.') { z.push(part); }
-      let mut y: Vec<&str> = Vec::new();
-      for part in parts[1].split('.') { y.push(part); }
-      let mut x: Vec<&str> = Vec::new();
-      for part in parts[2].split('.') { x.push(part); }
+      let z: Vec<&str> = split_on(parts[0], '.');
+      let y: Vec<&str> = split_on(parts[1], '.');
+      let x: Vec<&str> = split_on(parts[2], '.');
       if z.len() != 3 || y.len() != 3 || x.len() != 3 {
         return Err(error);
       }
@@ -506,12 +520,13 @@ fn soundex_internal(byte: String) -> String {
 
   let mut value: usize = 1; // 1-100
   for c in byte.to_string().into_bytes() {
-    if letter1.contains(c as char) { value += 1; continue; }
-    if letter2.contains(c as char) { value += 2; continue; }
-    if letter3.contains(c as char) { value += 3; continue; }
-    if letter4.contains(c as char) { value += 4; continue; }
-    if letter5.contains(c as char) { value += 5; continue; }
-    if letter6.contains(c as char) { value += 6; continue; }
+    // byte-slice contains: equivalent to str::contains(char) for these pure-ASCII literals, and avoids the Pattern trait
+    if letter1.as_bytes().contains(&c) { value += 1; continue; }
+    if letter2.as_bytes().contains(&c) { value += 2; continue; }
+    if letter3.as_bytes().contains(&c) { value += 3; continue; }
+    if letter4.as_bytes().contains(&c) { value += 4; continue; }
+    if letter5.as_bytes().contains(&c) { value += 5; continue; }
+    if letter6.as_bytes().contains(&c) { value += 6; continue; }
   }
 
   return (value % 99).to_string();
