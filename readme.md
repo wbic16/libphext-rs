@@ -37,6 +37,34 @@ The introduction of Large Language Models (LLMs) has accelerated our transition 
 
 > **Dense graphs:** phext is sparse by design. Coordinate components are unbounded, but a fully-populated dense graph contains the product of its dimensions' extents in scrolls — a dense block spanning 1000 in each of 9 dimensions implies 10^27 scrolls. Materializing, exploding, or indexing such a graph costs memory proportional to its populated scroll count. The old 999 cap never protected against this (999^9 was already unreachable); sparsity does. Keep graphs sparse.
 
+## Binary Scrolls (feature: `binary`)
+
+Phext scrolls are text (valid UTF-8). Arbitrary binary data rides as text via base64, in one canonical format that every phext implementation (Rust, Python, Node, C#, C, ...) must match byte-for-byte:
+
+```text
+phext-binary:1:base64
+<base64 body>
+```
+
+* Line 1 is exactly `phext-binary:1:base64`, followed by a single line break (0x0A).
+* The body is RFC 4648 base64: standard alphabet (`A-Z`, `a-z`, `0-9`, `+`, `/`), padding (`=`) required, no line wrapping, no whitespace.
+* An empty payload is the header line alone.
+* A scroll whose content begins with the header line is a binary scroll by definition — the format claims that namespace. A prefix-matching scroll whose body is not strict base64 is a *malformed* binary scroll; `fetch_binary` returns its bytes verbatim rather than failing.
+
+API: `binary::insert_binary` / `replace_binary` store a payload as a binary scroll unconditionally; `binary::fetch_binary` returns the bytes at a coordinate (the decoded payload for a binary scroll, the scroll's own UTF-8 bytes otherwise, empty for an unoccupied coordinate). `encode_scroll` / `decode_scroll` / `is_binary_scroll` expose the format itself.
+
+### The Ingestion Rule (canonical behaviour)
+
+> When non-UTF-8 data is observed in an incoming scroll update, we encode it with base64 verbatim.
+
+Byte-oriented entry points — `binary::insert_bytes`, `binary::replace_bytes`, and `binary::ingest` for whole externally supplied phext byte streams — never reject and never panic on non-UTF-8 scroll data. Valid UTF-8 is stored as ordinary text; anything else is stored as a binary scroll holding the base64 of the exact observed bytes, verbatim, with no normalisation, so the matching fetch returns the original bytes exactly. Within a phext byte stream the nine dimension-break bytes are always structural; binary payloads that may contain them enter through the update functions, armoured as base64.
+
+## The XZ Seal (feature: `xz`)
+
+Compression is a seal, not a working format. A phext is authored, edited, and queried as plain text; when a phext is finished — archived, published, or transported — it may be sealed: xz-compressed as a whole. `seal::seal` produces a standard xz stream (liblzma) over the phext's exact bytes, encoded at preset 6 (the preset is an encoder choice, not a format requirement; any valid xz stream unseals). `seal::unseal` restores the exact original bytes, and sealing is deterministic for a given encoder and preset. To unseal foreign content that may carry non-UTF-8 scrolls, unseal to bytes and pass them through `binary::ingest`.
+
+Both features are optional and off by default: the core crate keeps its single `xxh3` dependency. Enable them with `features = ["binary", "xz"]`.
+
 ## Build
 
 1. Clone this repo
