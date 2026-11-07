@@ -318,19 +318,21 @@ impl std::fmt::Display for PhextParseError {
 /// core's Pattern trait carries a generic associated type that Aeneas cannot translate today.
 /// The two passes keep borrows of the input out of the iterator loop: first collect the delimiter
 /// indices (owned data), then slice between them in a separate loop for the translator.
+/// The pieces are owned Strings because the translator cannot carry a vector of borrows of the
+/// input built inside a function; the semantics are unchanged.
 /// ----------------------------------------------------------------------------------------------------------
-fn split_on(s: &str, delim: char) -> Vec<&str> {
+fn split_on(s: &str, delim: char) -> Vec<String> {
   let mut cuts: Vec<usize> = Vec::new();
   for (i, ch) in s.char_indices() {
     if ch == delim { cuts.push(i); }
   }
-  let mut out: Vec<&str> = Vec::new();
+  let mut out: Vec<String> = Vec::new();
   let mut start: usize = 0;
   for cut in cuts {
-    out.push(&s[start..cut]);
+    out.push(s[start..cut].to_string());
     start = cut + delim.len_utf8();
   }
-  out.push(&s[start..]);
+  out.push(s[start..].to_string());
   out
 }
 
@@ -341,14 +343,14 @@ impl std::convert::TryFrom<&str> for Coordinate {
   type Error = PhextParseError;
 
   fn try_from(value: &str) -> Result<Self, Self::Error> {
-      let parts: Vec<&str> = split_on(value, '/');
+      let parts: Vec<String> = split_on(value, '/');
       let error: PhextParseError = Default::default();
       if parts.len() != 3 {        
         return Err(error);
       }
-      let z: Vec<&str> = split_on(parts[0], '.');
-      let y: Vec<&str> = split_on(parts[1], '.');
-      let x: Vec<&str> = split_on(parts[2], '.');
+      let z: Vec<String> = split_on(parts[0].as_str(), '.');
+      let y: Vec<String> = split_on(parts[1].as_str(), '.');
+      let x: Vec<String> = split_on(parts[2].as_str(), '.');
       if z.len() != 3 || y.len() != 3 || x.len() != 3 {
         return Err(error);
       }
