@@ -69,7 +69,7 @@
 /// We've annotated the ascii control codes from 0x01 to 0x1f below. Phext
 /// has made an effort to remain compatible with a broad swath of software.
 /// It is important to note, however, that phext is a fork in the road -
-/// ASCII has character codes that have fallen out of use. We've made them
+/// ASCII includes character codes that have fallen out of use. We've made them
 /// useful again.
 /// ----------------------------------------------------------------------------------------------------------
 
@@ -92,6 +92,21 @@ pub const VOLUME_BREAK: char = '\x1C';     // 7D Break - replaces file separator
 pub const COLLECTION_BREAK: char = '\x1D'; // 8D Break - replaces group separator
 pub const SERIES_BREAK: char = '\x1E';     // 9D Break - replaces record separator
 pub const SHELF_BREAK: char = '\x1F';      // 10D Break - replaces unit separator
+
+// byte forms of the char constants above, for use in byte-oriented code.
+// Aeneas cannot translate casts between char and int today, so byte code
+// compares and pushes these twins instead of converting the char constants.
+pub const LIBRARY_BREAK_U8: u8 = 0x01;    // byte form of LIBRARY_BREAK
+pub const MORE_COWBELL_U8: u8 = 0x07;     // byte form of MORE_COWBELL
+pub const LINE_BREAK_U8: u8 = 0x0A;       // byte form of LINE_BREAK
+pub const SCROLL_BREAK_U8: u8 = 0x17;     // byte form of SCROLL_BREAK
+pub const SECTION_BREAK_U8: u8 = 0x18;    // byte form of SECTION_BREAK
+pub const CHAPTER_BREAK_U8: u8 = 0x19;    // byte form of CHAPTER_BREAK
+pub const BOOK_BREAK_U8: u8 = 0x1A;       // byte form of BOOK_BREAK
+pub const VOLUME_BREAK_U8: u8 = 0x1C;     // byte form of VOLUME_BREAK
+pub const COLLECTION_BREAK_U8: u8 = 0x1D; // byte form of COLLECTION_BREAK
+pub const SERIES_BREAK_U8: u8 = 0x1E;     // byte form of SERIES_BREAK
+pub const SHELF_BREAK_U8: u8 = 0x1F;      // byte form of SHELF_BREAK
 
 pub const ADDRESS_MICRO_BREAK: u8 = b'.'; // delimiter for micro-coordinates
 pub const ADDRESS_MACRO_BREAK: u8 = b'/'; // delimiter for macro-coordinates
@@ -298,20 +313,44 @@ impl std::fmt::Display for PhextParseError {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// split_on: manual equivalent of str::split(char), matching its semantics exactly (empty segments
+/// and a trailing empty tail are preserved). Exists because str::split is Pattern-generic, and
+/// core's Pattern trait carries a generic associated type that Aeneas cannot translate today.
+/// The two passes keep borrows of the input out of the iterator loop: first collect the delimiter
+/// indices (owned data), then slice between them in a separate loop for the translator.
+/// The pieces are owned Strings because the translator cannot carry a vector of borrows of the
+/// input built inside a function; the semantics are unchanged.
+/// ----------------------------------------------------------------------------------------------------------
+fn split_on(s: &str, delim: char) -> Vec<String> {
+  let mut cuts: Vec<usize> = Vec::new();
+  for (i, ch) in s.char_indices() {
+    if ch == delim { cuts.push(i); }
+  }
+  let mut out: Vec<String> = Vec::new();
+  let mut start: usize = 0;
+  for cut in cuts {
+    out.push(s[start..cut].to_string());
+    start = cut + delim.len_utf8();
+  }
+  out.push(s[start..].to_string());
+  out
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn std::convert::TryFrom
 /// ----------------------------------------------------------------------------------------------------------
 impl std::convert::TryFrom<&str> for Coordinate {
   type Error = PhextParseError;
 
   fn try_from(value: &str) -> Result<Self, Self::Error> {
-      let parts: Vec<&str> = value.split('/').collect();
+      let parts: Vec<String> = split_on(value, '/');
       let error: PhextParseError = Default::default();
       if parts.len() != 3 {        
         return Err(error);
       }
-      let z: Vec<&str> = parts[0].split('.').collect();
-      let y: Vec<&str> = parts[1].split('.').collect();
-      let x: Vec<&str> = parts[2].split('.').collect();
+      let z: Vec<String> = split_on(parts[0].as_str(), '.');
+      let y: Vec<String> = split_on(parts[1].as_str(), '.');
+      let x: Vec<String> = split_on(parts[2].as_str(), '.');
       if z.len() != 3 || y.len() != 3 || x.len() != 3 {
         return Err(error);
       }
@@ -329,9 +368,9 @@ impl std::convert::TryFrom<&str> for Coordinate {
     }
 }
 
-pub fn check_for_cowbell(phext: &str) -> bool {
-  for byte in phext.as_bytes() {
-    if *byte == MORE_COWBELL as u8 {
+pub fn check_for_cowbell(input: &str) -> bool {
+  for byte in input.as_bytes() {
+    if *byte == MORE_COWBELL_U8 {
       return true;
     }
   }
@@ -412,31 +451,33 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn remove(phext: &str, location: Coordinate) -> String {
-  let phase1 = replace(phext, location, "");
+pub fn remove(input: &str, location: Coordinate) -> String {
+  let phase1 = replace(input, location, "");
   return normalize(phase1.as_str());
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn create_summary(phext: &str) -> String {
-  let mut summary = String::new();
-  for (_i, ch) in phext.char_indices() {
-    // only ASCII characters can be breaks: `ch as u8` would read U+010A as a line break
-    if ch.is_ascii() && is_phext_break(ch as u8) {
-      break;
-    }
-    summary.push(ch);
+pub fn create_summary(input: &str) -> String {
+  // scan bytes, not chars: every break is an ASCII byte below 0x20, and UTF-8
+  // multi-byte sequences never contain bytes below 0x80, so the two-byte form
+  // of U+010A cannot be mistaken for a line break. `end` lands either on a
+  // break byte or at the full length, so it is always a character boundary.
+  let bytes = input.as_bytes();
+  let mut end: usize = 0;
+  while end < bytes.len() {
+    if is_phext_break(bytes[end]) { break; }
+    end += 1;
   }
-  if summary.len() < phext.len() {
+  let mut summary = input[..end].to_string();
+  if end < bytes.len() {
     summary.push_str("...");
   }
-
   return summary;
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn navmap(urlbase: &str, phext: &str) -> String {
-  let phokens = phokenize(phext);
+pub fn navmap(urlbase: &str, input: &str) -> String {
+  let phokens = phokenize(input);
   let mut result = String::new();
   let max = phokens.len();
   if max > 0 {
@@ -453,8 +494,8 @@ pub fn navmap(urlbase: &str, phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn textmap(phext: &str) -> String {
-  let phokens = phokenize(phext);
+pub fn textmap(input: &str) -> String {
+  let phokens = phokenize(input);
   let mut result = String::new();
   for phoken in phokens {
     result += &format!("* {}: {}\n", phoken.coord.to_string(), create_summary(&phoken.scroll)).to_string();
@@ -468,15 +509,15 @@ pub fn textmap(phext: &str) -> String {
 ///
 /// Provides a 128-bit content checksum using the fastest algorithm Rust provides: xxh3
 /// ----------------------------------------------------------------------------------------------------------
-pub fn checksum(phext: &str) -> String {
-  let buffer = phext.as_bytes();
+pub fn checksum(input: &str) -> String {
+  let buffer = input.as_bytes();
   let hash = xxhash_rust::xxh3::xxh3_128(buffer);
   return format!("{:0>32}", format!("{:x}", hash));
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn manifest(phext: &str) -> String {
-  let mut phokens = phokenize(phext);
+pub fn manifest(input: &str) -> String {
+  let mut phokens = phokenize(input);
   let mut i = 0;
   while i < phokens.len() {
     phokens[i].scroll = checksum(phokens[i].scroll.as_str());
@@ -502,20 +543,21 @@ fn soundex_internal(byte: String) -> String {
 
   let mut value: usize = 1; // 1-100
   for c in byte.to_string().into_bytes() {
-    if letter1.contains(c as char) { value += 1; continue; }
-    if letter2.contains(c as char) { value += 2; continue; }
-    if letter3.contains(c as char) { value += 3; continue; }
-    if letter4.contains(c as char) { value += 4; continue; }
-    if letter5.contains(c as char) { value += 5; continue; }
-    if letter6.contains(c as char) { value += 6; continue; }
+    // byte-slice contains: equivalent to str::contains(char) for these pure-ASCII literals, and avoids the Pattern trait
+    if letter1.as_bytes().contains(&c) { value += 1; continue; }
+    if letter2.as_bytes().contains(&c) { value += 2; continue; }
+    if letter3.as_bytes().contains(&c) { value += 3; continue; }
+    if letter4.as_bytes().contains(&c) { value += 4; continue; }
+    if letter5.as_bytes().contains(&c) { value += 5; continue; }
+    if letter6.as_bytes().contains(&c) { value += 6; continue; }
   }
 
   return (value % 99).to_string();
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn soundex_v1(phext: &str) -> String {
-  let mut phokens = phokenize(phext);
+pub fn soundex_v1(input: &str) -> String {
+  let mut phokens = phokenize(input);
   
   for ith in &mut phokens {
     ith.scroll = soundex_internal(ith.scroll.clone());
@@ -525,8 +567,8 @@ pub fn soundex_v1(phext: &str) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-fn index_phokens(phext: &str) -> Vec<PositionedScroll> {
-  let phokens = phokenize(phext);
+fn index_phokens(input: &str) -> Vec<PositionedScroll> {
+  let phokens = phokenize(input);
   let mut offset: usize = 0;
   let mut coord = default_coordinate();
   let mut output: Vec<PositionedScroll> = Vec::new();
@@ -552,8 +594,8 @@ fn index_phokens(phext: &str) -> Vec<PositionedScroll> {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn index(phext: &str) -> String {
-  let mut output = index_phokens(phext);
+pub fn index(input: &str) -> String {
+  let mut output = index_phokens(input);
 
   return dephokenize(&mut output);
 }
@@ -562,8 +604,8 @@ pub fn index(phext: &str) -> String {
 ///
 /// The offset of the scroll at `coord`, or of the last scroll before it. 0 when no scroll comes at or before
 /// `coord` (earlier versions panicked there).
-pub fn offset(phext: &str, coord: Coordinate) -> usize {
-  let output = index_phokens(phext);
+pub fn offset(input: &str, coord: Coordinate) -> usize {
+  let output = index_phokens(input);
 
   let mut result: usize = 0;
   for phoken in output {
@@ -577,8 +619,8 @@ pub fn offset(phext: &str, coord: Coordinate) -> usize {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
-  let bytes = phext.as_bytes();
+pub fn replace(input: &str, location: Coordinate, scroll: &str) -> String {
+  let bytes = input.as_bytes();
   let parts = get_subspace_coordinates(bytes, location);
   let start: usize = parts.0;
   let mut end: usize = parts.1;
@@ -586,39 +628,39 @@ pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
   let mut subspace_coordinate: Coordinate = parts.2;
 
   while subspace_coordinate.z.library < location.z.library {
-    fixup.push(LIBRARY_BREAK as u8);
+    fixup.push(LIBRARY_BREAK_U8);
     subspace_coordinate.library_break();
   }
   while subspace_coordinate.z.shelf < location.z.shelf {
-    fixup.push(SHELF_BREAK as u8);
+    fixup.push(SHELF_BREAK_U8);
     subspace_coordinate.shelf_break();
   }
   while subspace_coordinate.z.series < location.z.series {
-    fixup.push(SERIES_BREAK as u8);
+    fixup.push(SERIES_BREAK_U8);
     subspace_coordinate.series_break();
   }
   while subspace_coordinate.y.collection < location.y.collection {
-    fixup.push(COLLECTION_BREAK as u8);
+    fixup.push(COLLECTION_BREAK_U8);
     subspace_coordinate.collection_break();
   }
   while subspace_coordinate.y.volume < location.y.volume {
-    fixup.push(VOLUME_BREAK as u8);
+    fixup.push(VOLUME_BREAK_U8);
     subspace_coordinate.volume_break();
   }
   while subspace_coordinate.y.book < location.y.book {
-    fixup.push(BOOK_BREAK as u8);
+    fixup.push(BOOK_BREAK_U8);
     subspace_coordinate.book_break();
   }
   while subspace_coordinate.x.chapter < location.x.chapter {
-    fixup.push(CHAPTER_BREAK as u8);
+    fixup.push(CHAPTER_BREAK_U8);
     subspace_coordinate.chapter_break();
   }
   while subspace_coordinate.x.section < location.x.section {
-    fixup.push(SECTION_BREAK as u8);
+    fixup.push(SECTION_BREAK_U8);
     subspace_coordinate.section_break();
   }
   while subspace_coordinate.x.scroll < location.x.scroll {
-    fixup.push(SCROLL_BREAK as u8);
+    fixup.push(SCROLL_BREAK_U8);
     subspace_coordinate.scroll_break();
   }
 
@@ -627,7 +669,11 @@ pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
   if end > max { end = max; }
   let left = &bytes[..start];
   let right = &bytes[end..];
-  let temp:Vec<u8> = left.iter().chain(fixup.iter()).chain(text).chain(right.iter()).cloned().collect();
+  let mut temp: Vec<u8> = Vec::new();
+  for b in left.iter() { temp.push(*b); }
+  for b in fixup.iter() { temp.push(*b); }
+  for b in text { temp.push(*b); }
+  for b in right.iter() { temp.push(*b); }
   let result: String = String::from_utf8(temp).expect("invalid utf8");
   return result;
 }
@@ -635,8 +681,8 @@ pub fn replace(phext: &str, location: Coordinate, scroll: &str) -> String {
 /// ----------------------------------------------------------------------------------------------------------
 /// errata: libphext-py opted for ranges that operate on a stack of positioned scrolls
 /// this method applies the range edit to subspace directly...we probably need both
-pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
-  let bytes = phext.as_bytes();
+pub fn range_replace(input: &str, location: Range, scroll: &str) -> String {
+  let bytes = input.as_bytes();
   let parts_start = get_subspace_coordinates(bytes, location.start);
   let parts_end = get_subspace_coordinates(bytes, location.end);
   let start: usize = parts_start.0;
@@ -647,7 +693,10 @@ pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
   if end > max { end = max; }
   let left = &bytes[..start];
   let right = &bytes[end..];
-  let temp:Vec<u8> = left.iter().chain(text).chain(right.iter()).cloned().collect();
+  let mut temp: Vec<u8> = Vec::new();
+  for b in left.iter() { temp.push(*b); }
+  for b in text { temp.push(*b); }
+  for b in right.iter() { temp.push(*b); }
   let result: String = String::from_utf8(temp).expect("invalid utf8");
   return result;
 }
@@ -657,47 +706,47 @@ pub fn range_replace(phext: &str, location: Range, scroll: &str) -> String {
 ///
 /// inserts the content specified in `scroll` at the coordinate within `phext` specified by `location`
 /// ----------------------------------------------------------------------------------------------------------
-pub fn insert(phext: String, location: Coordinate, scroll: &str) -> String {
-  let bytes: &[u8] = phext.as_bytes();
+pub fn insert(input: String, location: Coordinate, scroll: &str) -> String {
+  let bytes: &[u8] = input.as_bytes();
   let parts: (usize, usize, Coordinate) = get_subspace_coordinates(bytes, location);
   let end: usize = parts.1;
   let mut fixup: Vec<u8> = vec![];
   let mut subspace_coordinate: Coordinate = parts.2;
 
   while subspace_coordinate.z.library < location.z.library {
-    fixup.push(LIBRARY_BREAK as u8);
+    fixup.push(LIBRARY_BREAK_U8);
     subspace_coordinate.library_break();
   }
   while subspace_coordinate.z.shelf < location.z.shelf {
-    fixup.push(SHELF_BREAK as u8);
+    fixup.push(SHELF_BREAK_U8);
     subspace_coordinate.shelf_break();
   }
   while subspace_coordinate.z.series < location.z.series {
-    fixup.push(SERIES_BREAK as u8);
+    fixup.push(SERIES_BREAK_U8);
     subspace_coordinate.series_break();
   }
   while subspace_coordinate.y.collection < location.y.collection {
-    fixup.push(COLLECTION_BREAK as u8);
+    fixup.push(COLLECTION_BREAK_U8);
     subspace_coordinate.collection_break();
   }
   while subspace_coordinate.y.volume < location.y.volume {
-    fixup.push(VOLUME_BREAK as u8);
+    fixup.push(VOLUME_BREAK_U8);
     subspace_coordinate.volume_break();
   }
   while subspace_coordinate.y.book < location.y.book {
-    fixup.push(BOOK_BREAK as u8);
+    fixup.push(BOOK_BREAK_U8);
     subspace_coordinate.book_break();
   }
   while subspace_coordinate.x.chapter < location.x.chapter {
-    fixup.push(CHAPTER_BREAK as u8);
+    fixup.push(CHAPTER_BREAK_U8);
     subspace_coordinate.chapter_break();
   }
   while subspace_coordinate.x.section < location.x.section {
-    fixup.push(SECTION_BREAK as u8);
+    fixup.push(SECTION_BREAK_U8);
     subspace_coordinate.section_break();
   }
   while subspace_coordinate.x.scroll < location.x.scroll {
-    fixup.push(SCROLL_BREAK as u8);
+    fixup.push(SCROLL_BREAK_U8);
     subspace_coordinate.scroll_break();
   }
 
@@ -720,9 +769,9 @@ pub fn insert(phext: String, location: Coordinate, scroll: &str) -> String {
 ///
 /// retrieves the next scroll from the given string, assuming an arbitrary starting point
 /// ----------------------------------------------------------------------------------------------------------
-pub fn next_scroll(phext: &str, start: Coordinate) -> (PositionedScroll, Coordinate, String) {
+pub fn next_scroll(input: &str, start: Coordinate) -> (PositionedScroll, Coordinate, String) {
   let mut location = start;
-  let p = phext.as_bytes();
+  let p = input.as_bytes();
   let mut output: Vec<u8> = vec![];
   let mut remaining: Vec<u8> = vec![];
   let mut pi: usize = 0;
@@ -730,17 +779,16 @@ pub fn next_scroll(phext: &str, start: Coordinate) -> (PositionedScroll, Coordin
   let pmax = p.len();
   while pi < pmax
   {
-    let test = p[pi] as char;
     let mut dimension_break: bool = false;
-    if test == SCROLL_BREAK     { location.scroll_break();     dimension_break = true; }
-    if test == SECTION_BREAK    { location.section_break();    dimension_break = true; }
-    if test == CHAPTER_BREAK    { location.chapter_break();    dimension_break = true; }
-    if test == BOOK_BREAK       { location.book_break();       dimension_break = true; }
-    if test == VOLUME_BREAK     { location.volume_break();     dimension_break = true; }
-    if test == COLLECTION_BREAK { location.collection_break(); dimension_break = true; }
-    if test == SERIES_BREAK     { location.series_break();     dimension_break = true; }
-    if test == SHELF_BREAK      { location.shelf_break();      dimension_break = true; }
-    if test == LIBRARY_BREAK    { location.library_break();    dimension_break = true; }
+    if p[pi] == SCROLL_BREAK_U8     { location.scroll_break();     dimension_break = true; }
+    if p[pi] == SECTION_BREAK_U8    { location.section_break();    dimension_break = true; }
+    if p[pi] == CHAPTER_BREAK_U8    { location.chapter_break();    dimension_break = true; }
+    if p[pi] == BOOK_BREAK_U8       { location.book_break();       dimension_break = true; }
+    if p[pi] == VOLUME_BREAK_U8     { location.volume_break();     dimension_break = true; }
+    if p[pi] == COLLECTION_BREAK_U8 { location.collection_break(); dimension_break = true; }
+    if p[pi] == SERIES_BREAK_U8     { location.series_break();     dimension_break = true; }
+    if p[pi] == SHELF_BREAK_U8      { location.shelf_break();      dimension_break = true; }
+    if p[pi] == LIBRARY_BREAK_U8    { location.library_break();    dimension_break = true; }
 
     if dimension_break {
       if output.len() > 0 {
@@ -770,15 +818,15 @@ pub fn next_scroll(phext: &str, start: Coordinate) -> (PositionedScroll, Coordin
 /// true for the nine delimiters that move to a new scroll (line breaks stay inside a scroll)
 /// ----------------------------------------------------------------------------------------------------------
 fn is_dimension_break(byte: u8) -> bool {
-  return byte == SCROLL_BREAK as u8 ||
-         byte == SECTION_BREAK as u8 ||
-         byte == CHAPTER_BREAK as u8 ||
-         byte == BOOK_BREAK as u8 ||
-         byte == VOLUME_BREAK as u8 ||
-         byte == COLLECTION_BREAK as u8 ||
-         byte == SERIES_BREAK as u8 ||
-         byte == SHELF_BREAK as u8 ||
-         byte == LIBRARY_BREAK as u8;
+  return byte == SCROLL_BREAK_U8 ||
+         byte == SECTION_BREAK_U8 ||
+         byte == CHAPTER_BREAK_U8 ||
+         byte == BOOK_BREAK_U8 ||
+         byte == VOLUME_BREAK_U8 ||
+         byte == COLLECTION_BREAK_U8 ||
+         byte == SERIES_BREAK_U8 ||
+         byte == SHELF_BREAK_U8 ||
+         byte == LIBRARY_BREAK_U8;
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -787,16 +835,15 @@ fn is_dimension_break(byte: u8) -> bool {
 /// advances `location` across one dimension break
 /// ----------------------------------------------------------------------------------------------------------
 fn apply_break(location: &mut Coordinate, byte: u8) {
-  let test = byte as char;
-  if test == SCROLL_BREAK     { location.scroll_break();     }
-  if test == SECTION_BREAK    { location.section_break();    }
-  if test == CHAPTER_BREAK    { location.chapter_break();    }
-  if test == BOOK_BREAK       { location.book_break();       }
-  if test == VOLUME_BREAK     { location.volume_break();     }
-  if test == COLLECTION_BREAK { location.collection_break(); }
-  if test == SERIES_BREAK     { location.series_break();     }
-  if test == SHELF_BREAK      { location.shelf_break();      }
-  if test == LIBRARY_BREAK    { location.library_break();    }
+  if byte == SCROLL_BREAK_U8     { location.scroll_break();     }
+  if byte == SECTION_BREAK_U8    { location.section_break();    }
+  if byte == CHAPTER_BREAK_U8    { location.chapter_break();    }
+  if byte == BOOK_BREAK_U8       { location.book_break();       }
+  if byte == VOLUME_BREAK_U8     { location.volume_break();     }
+  if byte == COLLECTION_BREAK_U8 { location.collection_break(); }
+  if byte == SERIES_BREAK_U8     { location.series_break();     }
+  if byte == SHELF_BREAK_U8      { location.shelf_break();      }
+  if byte == LIBRARY_BREAK_U8    { location.library_break();    }
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -808,9 +855,9 @@ fn apply_break(location: &mut Coordinate, byte: u8) {
 /// of text, then consume the break that ends it. Earlier versions called `next_scroll` in a loop, which
 /// copied the rest of the document for every scroll and made this quadratic in the document size.
 /// ----------------------------------------------------------------------------------------------------------
-pub fn phokenize(phext: &str) -> Vec<PositionedScroll> {
+pub fn phokenize(input: &str) -> Vec<PositionedScroll> {
   let mut result: Vec<PositionedScroll> = Vec::new();
-  let bytes = phext.as_bytes();
+  let bytes = input.as_bytes();
   let max = bytes.len();
   let mut coord = default_coordinate();
   let mut pi: usize = 0;
@@ -836,7 +883,7 @@ pub fn phokenize(phext: &str) -> Vec<PositionedScroll> {
     }
     let scroll = match text_start {
       // breaks are ASCII, so these offsets always fall on character boundaries
-      Some(first) => phext[first..text_end].to_string(),
+      Some(first) => input[first..text_end].to_string(),
       None => String::new(),
     };
     result.push(PositionedScroll{coord: begin, scroll});
@@ -851,8 +898,8 @@ pub fn phokenize(phext: &str) -> Vec<PositionedScroll> {
 ///
 /// Explodes an input phext into a hierarchical hashap, suitable for fast access and updates
 /// ----------------------------------------------------------------------------------------------------------
-pub fn explode(phext: &str) -> HashMap<Coordinate, String> {
-  let parts = phokenize(phext);
+pub fn explode(input: &str) -> HashMap<Coordinate, String> {
+  let parts = phokenize(input);
   let mut hash = HashMap::new();
   for row in parts {
     hash.insert(row.coord, row.scroll);
@@ -926,8 +973,8 @@ pub fn merge(left: &str, right: &str) -> String {
 /// @param phext  the raw phext buffer to search
 /// @param coord  coordinate to select the scroll from
 /// ----------------------------------------------------------------------------------------------------------
-pub fn fetch(phext: &str, target: Coordinate) -> String {
-  let bytes: &[u8] = phext.as_bytes();
+pub fn fetch(input: &str, target: Coordinate) -> String {
+  let bytes: &[u8] = input.as_bytes();
   let parts = get_subspace_coordinates(bytes, target);
 
   let start = parts.0 as usize;
@@ -936,7 +983,13 @@ pub fn fetch(phext: &str, target: Coordinate) -> String {
   if end > start
   {
     let glyphs: usize = end - start;
-    let temp: Vec<u8> = bytes.iter().skip(start).take(glyphs).cloned().collect();
+    let mut temp: Vec<u8> = Vec::new();
+    let stop = if start + glyphs < bytes.len() { start + glyphs } else { bytes.len() };
+    let mut idx = start;
+    while idx < stop {
+      temp.push(bytes[idx]);
+      idx += 1;
+    }
     let result: String = String::from_utf8(temp).expect("invalid utf8");
     return result;
   }
@@ -945,78 +998,70 @@ pub fn fetch(phext: &str, target: Coordinate) -> String {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn expand(phext: &str) -> String {
-  let mut copy = phext.to_string().clone();
-  unsafe {
-  let buffer = copy.as_bytes_mut();
+pub fn expand(input: &str) -> String {
+  let mut buffer: Vec<u8> = input.to_string().into_bytes();
   let max = buffer.len();
   let mut p: usize = 0;
   loop {
     if p == max { break; }
-    if buffer[p] == LINE_BREAK as u8 {
-      buffer[p] = SCROLL_BREAK as u8;
-    } else if buffer[p] == SCROLL_BREAK as u8 {
-      buffer[p] = SECTION_BREAK as u8;
-    } else if buffer[p] == SECTION_BREAK as u8 {
-      buffer[p] = CHAPTER_BREAK as u8;
-    } else if buffer[p] == CHAPTER_BREAK as u8 {
-      buffer[p] = BOOK_BREAK as u8;
-    } else if buffer[p] == BOOK_BREAK as u8 {
-      buffer[p] = VOLUME_BREAK as u8;
-    } else if buffer[p] == VOLUME_BREAK as u8{
-      buffer[p] = COLLECTION_BREAK as u8;
-    } else if buffer[p] == COLLECTION_BREAK as u8 {
-      buffer[p] = SERIES_BREAK as u8;
-    } else if buffer[p] == SERIES_BREAK as u8 {
-      buffer[p] = SHELF_BREAK as u8;
-    } else if buffer[p] == SHELF_BREAK as u8 {
-      buffer[p] = LIBRARY_BREAK as u8;
+    if buffer[p] == LINE_BREAK_U8 {
+      buffer[p] = SCROLL_BREAK_U8;
+    } else if buffer[p] == SCROLL_BREAK_U8 {
+      buffer[p] = SECTION_BREAK_U8;
+    } else if buffer[p] == SECTION_BREAK_U8 {
+      buffer[p] = CHAPTER_BREAK_U8;
+    } else if buffer[p] == CHAPTER_BREAK_U8 {
+      buffer[p] = BOOK_BREAK_U8;
+    } else if buffer[p] == BOOK_BREAK_U8 {
+      buffer[p] = VOLUME_BREAK_U8;
+    } else if buffer[p] == VOLUME_BREAK_U8{
+      buffer[p] = COLLECTION_BREAK_U8;
+    } else if buffer[p] == COLLECTION_BREAK_U8 {
+      buffer[p] = SERIES_BREAK_U8;
+    } else if buffer[p] == SERIES_BREAK_U8 {
+      buffer[p] = SHELF_BREAK_U8;
+    } else if buffer[p] == SHELF_BREAK_U8 {
+      buffer[p] = LIBRARY_BREAK_U8;
     }
     p += 1;
   }
 
-  let temp: Vec<u8> = buffer.iter().cloned().collect();
-  let result: String = String::from_utf8(temp).expect("invalid utf8");
+  let result: String = String::from_utf8(buffer).expect("invalid utf8");
   return result;
-  }
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn contract(phext: &str) -> String {
-  let mut copy = phext.to_string().clone();
-  unsafe {
-  let buffer = copy.as_bytes_mut();
+pub fn contract(input: &str) -> String {
+  let mut buffer: Vec<u8> = input.to_string().into_bytes();
   let max = buffer.len();
   let mut p: usize = 0;
   loop {
     if p == max { break; }
     
-    if buffer[p] == LIBRARY_BREAK as u8 {
-      buffer[p] = SHELF_BREAK as u8;
-    } else if buffer[p] == SHELF_BREAK as u8 {
-      buffer[p] = SERIES_BREAK as u8;
-    } else if buffer[p] == SERIES_BREAK as u8 {
-      buffer[p] = COLLECTION_BREAK as u8;
-    } else if buffer[p] == COLLECTION_BREAK as u8{
-      buffer[p] = VOLUME_BREAK as u8;
-    } else if buffer[p] == VOLUME_BREAK as u8 {
-      buffer[p] = BOOK_BREAK as u8;
-    } else if buffer[p] == BOOK_BREAK as u8 {
-      buffer[p] = CHAPTER_BREAK as u8;
-    } else if buffer[p] == CHAPTER_BREAK as u8 {
-      buffer[p] = SECTION_BREAK as u8;
-    } else if buffer[p] == SECTION_BREAK as u8 {
-      buffer[p] = SCROLL_BREAK as u8;
-    } else if buffer[p] == SCROLL_BREAK as u8 {
-      buffer[p] = LINE_BREAK as u8;
+    if buffer[p] == LIBRARY_BREAK_U8 {
+      buffer[p] = SHELF_BREAK_U8;
+    } else if buffer[p] == SHELF_BREAK_U8 {
+      buffer[p] = SERIES_BREAK_U8;
+    } else if buffer[p] == SERIES_BREAK_U8 {
+      buffer[p] = COLLECTION_BREAK_U8;
+    } else if buffer[p] == COLLECTION_BREAK_U8{
+      buffer[p] = VOLUME_BREAK_U8;
+    } else if buffer[p] == VOLUME_BREAK_U8 {
+      buffer[p] = BOOK_BREAK_U8;
+    } else if buffer[p] == BOOK_BREAK_U8 {
+      buffer[p] = CHAPTER_BREAK_U8;
+    } else if buffer[p] == CHAPTER_BREAK_U8 {
+      buffer[p] = SECTION_BREAK_U8;
+    } else if buffer[p] == SECTION_BREAK_U8 {
+      buffer[p] = SCROLL_BREAK_U8;
+    } else if buffer[p] == SCROLL_BREAK_U8 {
+      buffer[p] = LINE_BREAK_U8;
     }   
     p += 1;
   }
 
-  let temp: Vec<u8> = buffer.iter().cloned().collect();
-  let result: String = String::from_utf8(temp).expect("invalid utf8");
+  let result: String = String::from_utf8(buffer).expect("invalid utf8");
   return result;
-  }
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1086,21 +1131,21 @@ pub fn subtract(left: &str, right: &str) -> String {
 /// returns true if `byte` corresponds to one of our phext delimiters (line breaks included)
 /// ----------------------------------------------------------------------------------------------------------
 pub fn is_phext_break(byte: u8) -> bool {
-  return byte == LINE_BREAK as u8 ||
-         byte == SCROLL_BREAK as u8 ||
-         byte == SECTION_BREAK as u8 ||
-         byte == CHAPTER_BREAK as u8 ||
-         byte == BOOK_BREAK as u8 ||
-         byte == VOLUME_BREAK as u8 ||
-         byte == COLLECTION_BREAK as u8 ||
-         byte == SERIES_BREAK as u8 ||
-         byte == SHELF_BREAK as u8 ||
-         byte == LIBRARY_BREAK as u8;
+  return byte == LINE_BREAK_U8 ||
+         byte == SCROLL_BREAK_U8 ||
+         byte == SECTION_BREAK_U8 ||
+         byte == CHAPTER_BREAK_U8 ||
+         byte == BOOK_BREAK_U8 ||
+         byte == VOLUME_BREAK_U8 ||
+         byte == COLLECTION_BREAK_U8 ||
+         byte == SERIES_BREAK_U8 ||
+         byte == SHELF_BREAK_U8 ||
+         byte == LIBRARY_BREAK_U8;
 }
 
 /// ----------------------------------------------------------------------------------------------------------
-pub fn normalize(phext: &str) -> String {
-  let mut arr = phokenize(phext);
+pub fn normalize(input: &str) -> String {
+  let mut arr = phokenize(input);
   return dephokenize(&mut arr);
 }
 
