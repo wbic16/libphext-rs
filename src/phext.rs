@@ -355,15 +355,44 @@ impl std::convert::TryFrom<&str> for Coordinate {
         return Err(error);
       }
       let mut result: Coordinate = Default::default();
-      result.z.library = z[0].parse::<usize>().expect("Library missing");
-      result.z.shelf = z[1].parse::<usize>().expect("Shelf missing");
-      result.z.series = z[2].parse::<usize>().expect("Series missing");
-      result.y.collection = y[0].parse::<usize>().expect("Collection missing");
-      result.y.volume = y[1].parse::<usize>().expect("Volume missing");
-      result.y.book = y[2].parse::<usize>().expect("Book missing");
-      result.x.chapter = x[0].parse::<usize>().expect("Chapter missing");
-      result.x.section = x[1].parse::<usize>().expect("Section missing");
-      result.x.scroll = x[2].parse::<usize>().expect("Scroll missing");
+      // A component that fails to parse (non-numeric, empty, negative, or
+      // beyond usize) is a parse error, not a panic: return Err.
+      match z[0].parse::<usize>() {
+        Ok(v) => result.z.library = v,
+        Err(_) => return Err(error),
+      }
+      match z[1].parse::<usize>() {
+        Ok(v) => result.z.shelf = v,
+        Err(_) => return Err(error),
+      }
+      match z[2].parse::<usize>() {
+        Ok(v) => result.z.series = v,
+        Err(_) => return Err(error),
+      }
+      match y[0].parse::<usize>() {
+        Ok(v) => result.y.collection = v,
+        Err(_) => return Err(error),
+      }
+      match y[1].parse::<usize>() {
+        Ok(v) => result.y.volume = v,
+        Err(_) => return Err(error),
+      }
+      match y[2].parse::<usize>() {
+        Ok(v) => result.y.book = v,
+        Err(_) => return Err(error),
+      }
+      match x[0].parse::<usize>() {
+        Ok(v) => result.x.chapter = v,
+        Err(_) => return Err(error),
+      }
+      match x[1].parse::<usize>() {
+        Ok(v) => result.x.section = v,
+        Err(_) => return Err(error),
+      }
+      match x[2].parse::<usize>() {
+        Ok(v) => result.x.scroll = v,
+        Err(_) => return Err(error),
+      }
       return Ok(result);
     }
 }
@@ -1205,7 +1234,7 @@ pub fn to_coordinate(address: &str) -> Coordinate {
 
     if byte >= 0x30 && byte <= 0x39
     {
-      value = exp * value + ((byte - 0x30) as u64);
+      value = exp.saturating_mul(value).saturating_add((byte - 0x30) as u64);
       if index == 0 { index = 1; }
     }
   }
