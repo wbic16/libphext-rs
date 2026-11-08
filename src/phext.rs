@@ -171,7 +171,7 @@ impl Default for ZCoordinate {
 }
 impl std::fmt::Display for ZCoordinate {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "{}.{}.{}", self.library, self.shelf, self.series);
+    write!(f, "{}.{}.{}", self.library, self.shelf, self.series)
   }
 }
 
@@ -198,7 +198,7 @@ impl Default for YCoordinate {
 }
 impl std::fmt::Display for YCoordinate {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "{}.{}.{}", self.collection, self.volume, self.book);
+    write!(f, "{}.{}.{}", self.collection, self.volume, self.book)
   }
 }
 
@@ -225,7 +225,7 @@ impl Default for XCoordinate {
 }
 impl std::fmt::Display for XCoordinate {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "{}.{}.{}", self.chapter, self.section, self.scroll);
+    write!(f, "{}.{}.{}", self.chapter, self.section, self.scroll)
   }
 }
 
@@ -261,7 +261,7 @@ impl Coordinate {
 }
 impl std::fmt::Display for Coordinate {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "{}/{}/{}", self.z, self.y, self.x);
+    write!(f, "{}/{}/{}", self.z, self.y, self.x)
   }
 }
 
@@ -277,12 +277,12 @@ impl PositionedScroll {
 }
 impl std::fmt::Display for PositionedScroll {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "{}: {}", self.coord.to_string(), self.scroll[..4].to_string());
+    write!(f, "{}: {}", self.coord.to_string(), &self.scroll[..4])
   }
 }
 impl Ord for PositionedScroll {
   fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-      return self.coord.cmp(&other.coord);
+      self.coord.cmp(&other.coord)
   }
 }
 
@@ -298,7 +298,7 @@ impl Range {
 }
 impl std::fmt::Display for Range {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "{}-{}", self.start, self.end);
+    write!(f, "{}-{}", self.start, self.end)
   }
 }
 
@@ -308,7 +308,7 @@ impl std::error::Error for PhextParseError {}
 
 impl std::fmt::Display for PhextParseError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    return write!(f, "Phext addresses are of the form LB.SF.SR/CN.VM.BK/CH.SN.SC");
+    write!(f, "Phext addresses are of the form LB.SF.SR/CN.VM.BK/CH.SN.SC")
   }
 }
 
@@ -393,7 +393,7 @@ impl std::convert::TryFrom<&str> for Coordinate {
         Ok(v) => result.x.scroll = v,
         Err(_) => return Err(error),
       }
-      return Ok(result);
+      Ok(result)
     }
 }
 
@@ -404,7 +404,7 @@ pub fn check_for_cowbell(input: &str) -> bool {
     }
   }
 
-  return false;
+  false
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -482,7 +482,7 @@ pub fn get_subspace_coordinates(subspace: &[u8], target: Coordinate) -> (usize, 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn remove(input: &str, location: Coordinate) -> String {
   let phase1 = replace(input, location, "");
-  return normalize(phase1.as_str());
+  normalize(phase1.as_str())
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -501,7 +501,7 @@ pub fn create_summary(input: &str) -> String {
   if end < bytes.len() {
     summary.push_str("...");
   }
-  return summary;
+  summary
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -519,7 +519,7 @@ pub fn navmap(urlbase: &str, input: &str) -> String {
     result += "</ul>\n";
   }
 
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -530,7 +530,7 @@ pub fn textmap(input: &str) -> String {
     result += &format!("* {}: {}\n", phoken.coord.to_string(), create_summary(&phoken.scroll)).to_string();
   }
 
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -541,7 +541,7 @@ pub fn textmap(input: &str) -> String {
 pub fn checksum(input: &str) -> String {
   let buffer = input.as_bytes();
   let hash = xxhash_rust::xxh3::xxh3_128(buffer);
-  return format!("{:0>32}", format!("{:x}", hash));
+  format!("{:0>32}", format!("{:x}", hash))
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -553,9 +553,9 @@ pub fn manifest(input: &str) -> String {
     i += 1;
   }
 
-  let result = dephokenize(&mut phokens);
+  
 
-  return result;
+  dephokenize(&mut phokens)
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -581,7 +581,7 @@ fn soundex_internal(byte: String) -> String {
     if letter6.as_bytes().contains(&c) { value += 6; continue; }
   }
 
-  return (value % 99).to_string();
+  (value % 99).to_string()
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -592,7 +592,7 @@ pub fn soundex_v1(input: &str) -> String {
     ith.scroll = soundex_internal(ith.scroll.clone());
   }
 
-  return dephokenize(&mut phokens);
+  dephokenize(&mut phokens)
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -614,19 +614,19 @@ fn index_phokens(input: &str) -> Vec<PositionedScroll> {
     while coord.x.section < reference.x.section { coord.section_break(); offset += 1; }
     while coord.x.scroll < reference.x.scroll { coord.scroll_break(); offset += 1; }
     
-    output.push(PositionedScroll { coord, scroll: format!("{}", offset)});
+    output.push(PositionedScroll { coord, scroll: format!("{offset}")});
     offset += phokens[i].scroll.len();
     i += 1;
   }
 
-  return output;
+  output
 }
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn index(input: &str) -> String {
   let mut output = index_phokens(input);
 
-  return dephokenize(&mut output);
+  dephokenize(&mut output)
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -644,7 +644,7 @@ pub fn offset(input: &str, coord: Coordinate) -> usize {
     result = phoken.scroll.parse::<usize>().unwrap_or(result);
   }
 
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -704,7 +704,7 @@ pub fn replace(input: &str, location: Coordinate, scroll: &str) -> String {
   for b in text { temp.push(*b); }
   for b in right.iter() { temp.push(*b); }
   let result: String = String::from_utf8(temp).expect("invalid utf8");
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -727,7 +727,7 @@ pub fn range_replace(input: &str, location: Range, scroll: &str) -> String {
   for b in text { temp.push(*b); }
   for b in right.iter() { temp.push(*b); }
   let result: String = String::from_utf8(temp).expect("invalid utf8");
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -789,7 +789,7 @@ pub fn insert(input: String, location: Coordinate, scroll: &str) -> String {
   temp.extend_from_slice(right);
   let result: String = String::from_utf8(temp).expect("invalid utf8");
 
-  return result;
+  result
 }
 
 
@@ -820,7 +820,7 @@ pub fn next_scroll(input: &str, start: Coordinate) -> (PositionedScroll, Coordin
     if p[pi] == LIBRARY_BREAK_U8    { location.library_break();    dimension_break = true; }
 
     if dimension_break {
-      if output.len() > 0 {
+      if !output.is_empty() {
         pi += 1;
         break;
       }
@@ -838,7 +838,7 @@ pub fn next_scroll(input: &str, start: Coordinate) -> (PositionedScroll, Coordin
   }
 
   let out_scroll: PositionedScroll = PositionedScroll{coord: begin, scroll: String::from_utf8(output).expect("valid UTF-8")};
-  return (out_scroll, location, String::from_utf8(remaining).expect("valid UTF-8"));
+  (out_scroll, location, String::from_utf8(remaining).expect("valid UTF-8"))
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -847,7 +847,7 @@ pub fn next_scroll(input: &str, start: Coordinate) -> (PositionedScroll, Coordin
 /// true for the nine delimiters that move to a new scroll (line breaks stay inside a scroll)
 /// ----------------------------------------------------------------------------------------------------------
 fn is_dimension_break(byte: u8) -> bool {
-  return byte == SCROLL_BREAK_U8 ||
+  byte == SCROLL_BREAK_U8 ||
          byte == SECTION_BREAK_U8 ||
          byte == CHAPTER_BREAK_U8 ||
          byte == BOOK_BREAK_U8 ||
@@ -855,7 +855,7 @@ fn is_dimension_break(byte: u8) -> bool {
          byte == COLLECTION_BREAK_U8 ||
          byte == SERIES_BREAK_U8 ||
          byte == SHELF_BREAK_U8 ||
-         byte == LIBRARY_BREAK_U8;
+         byte == LIBRARY_BREAK_U8
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -919,7 +919,7 @@ pub fn phokenize(input: &str) -> Vec<PositionedScroll> {
     if pi >= max { break; }
   }
 
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -933,7 +933,7 @@ pub fn explode(input: &str) -> HashMap<Coordinate, String> {
   for row in parts {
     hash.insert(row.coord, row.scroll);
   }
-  return hash;
+  hash
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -948,7 +948,7 @@ pub fn implode(map: HashMap::<Coordinate, String>) -> String {
     vec.push(ps);
   }
   vec.sort();
-  return dephokenize(&mut vec);
+  dephokenize(&mut vec)
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -970,8 +970,8 @@ pub fn merge(left: &str, right: &str) -> String {
     let have_left = tli < maxtl;
     let have_right = tri < maxtr;
     
-    let pick_left = have_left && (have_right == false || tl[tli].coord <= tr[tri].coord);
-    let pick_right = have_right && (have_left == false || tr[tri].coord <= tl[tli].coord);
+    let pick_left = have_left && (!have_right || tl[tli].coord <= tr[tri].coord);
+    let pick_right = have_right && (!have_left || tr[tri].coord <= tl[tli].coord);
 
     if pick_left {
       append_scroll(&mut result, &tl[tli], coord);
@@ -984,12 +984,12 @@ pub fn merge(left: &str, right: &str) -> String {
       tri += 1;
     }
 
-    if pick_left == false && pick_right == false {
+    if !pick_left && !pick_right {
       break;
     }
   }
 
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1023,7 +1023,7 @@ pub fn fetch(input: &str, target: Coordinate) -> String {
     return result;
   }
 
-  return "".to_owned();
+  "".to_owned()
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1056,7 +1056,7 @@ pub fn expand(input: &str) -> String {
   }
 
   let result: String = String::from_utf8(buffer).expect("invalid utf8");
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1090,7 +1090,7 @@ pub fn contract(input: &str) -> String {
   }
 
   let result: String = String::from_utf8(buffer).expect("invalid utf8");
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1098,12 +1098,12 @@ fn dephokenize(tokens: &mut Vec<PositionedScroll>) -> String {
   let mut result: String = Default::default();
   let mut coord = default_coordinate();
   for ps in tokens {
-    if ps.scroll.len() > 0 {
+    if !ps.scroll.is_empty() {
       append_scroll(&mut result, ps, coord);
     }
     coord = ps.coord;
   }
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1151,7 +1151,7 @@ pub fn subtract(left: &str, right: &str) -> String {
     }
   }
 
-  return result;
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1160,7 +1160,7 @@ pub fn subtract(left: &str, right: &str) -> String {
 /// returns true if `byte` corresponds to one of our phext delimiters (line breaks included)
 /// ----------------------------------------------------------------------------------------------------------
 pub fn is_phext_break(byte: u8) -> bool {
-  return byte == LINE_BREAK_U8 ||
+  byte == LINE_BREAK_U8 ||
          byte == SCROLL_BREAK_U8 ||
          byte == SECTION_BREAK_U8 ||
          byte == CHAPTER_BREAK_U8 ||
@@ -1169,18 +1169,19 @@ pub fn is_phext_break(byte: u8) -> bool {
          byte == COLLECTION_BREAK_U8 ||
          byte == SERIES_BREAK_U8 ||
          byte == SHELF_BREAK_U8 ||
-         byte == LIBRARY_BREAK_U8;
+         byte == LIBRARY_BREAK_U8
 }
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn normalize(input: &str) -> String {
   let mut arr = phokenize(input);
-  return dephokenize(&mut arr);
+  dephokenize(&mut arr)
 }
 
 /// ----------------------------------------------------------------------------------------------------------
 pub fn default_coordinate() -> Coordinate {
-  let coord = Coordinate {
+  
+  Coordinate {
     z: ZCoordinate {
       library: 1,
       shelf: 1,
@@ -1196,8 +1197,7 @@ pub fn default_coordinate() -> Coordinate {
       section: 1,
       scroll: 1
     }
-  };
-  return coord;
+  }
 }
 
 /// ----------------------------------------------------------------------------------------------------------
@@ -1232,7 +1232,7 @@ pub fn to_coordinate(address: &str) -> Coordinate {
       value = 0;
     }
 
-    if byte >= 0x30 && byte <= 0x39
+    if (0x30..=0x39).contains(&byte)
     {
       value = exp.saturating_mul(value).saturating_add((byte - 0x30) as u64);
       if index == 0 { index = 1; }
@@ -1243,11 +1243,11 @@ pub fn to_coordinate(address: &str) -> Coordinate {
     result.x.scroll = value as usize;
   }
 
-  return result;
+  result
 }
 
 fn validate_dimension_index(index: usize) -> bool {
-  return index >= COORDINATE_MINIMUM;
+  index >= COORDINATE_MINIMUM
 }
 
 impl Coordinate {
@@ -1259,7 +1259,8 @@ impl Coordinate {
   /// @param coord: the coordinate to reset
   /// ----------------------------------------------------------------------------------------------------------
   pub fn validate_coordinate(&self) -> bool {
-    let ok = validate_dimension_index(self.z.library) &&
+    
+    validate_dimension_index(self.z.library) &&
                    validate_dimension_index(self.z.shelf) &&
                    validate_dimension_index(self.z.series) &&
                    validate_dimension_index(self.y.collection) &&
@@ -1267,8 +1268,7 @@ impl Coordinate {
                    validate_dimension_index(self.y.book) &&
                    validate_dimension_index(self.x.chapter) &&
                    validate_dimension_index(self.x.section) &&
-                   validate_dimension_index(self.x.scroll);
-    return ok;
+                   validate_dimension_index(self.x.scroll)
   }
 
   /// ----------------------------------------------------------------------------------------------------------
@@ -1282,20 +1282,20 @@ impl Coordinate {
     if !self.validate_coordinate() {
       return "".to_owned();
     }
-    return format!("{}.{}.{}/{}.{}.{}/{}.{}.{}",
+    format!("{}.{}.{}/{}.{}.{}/{}.{}.{}",
       self.z.library, self.z.shelf, self.z.series,
       self.y.collection, self.y.volume, self.y.book,
-      self.x.chapter, self.x.section, self.x.scroll);
+      self.x.chapter, self.x.section, self.x.scroll)
   }
 
   pub fn to_urlencoded(&self) -> String {
     if !self.validate_coordinate() {
       return "".to_owned();
     }
-    return format!("{}.{}.{};{}.{}.{};{}.{}.{}",
+    format!("{}.{}.{};{}.{}.{};{}.{}.{}",
       self.z.library, self.z.shelf, self.z.series,
       self.y.collection, self.y.volume, self.y.book,
-      self.x.chapter, self.x.section, self.x.scroll);
+      self.x.chapter, self.x.section, self.x.scroll)
   }
 
   /// ----------------------------------------------------------------------------------------------------------
@@ -1303,7 +1303,7 @@ impl Coordinate {
   ///
   /// ----------------------------------------------------------------------------------------------------------
   fn advance_coordinate(index: usize) -> usize {
-    return index + 1; // components are unbounded: advancing never saturates
+    index + 1// components are unbounded: advancing never saturates
   }
 
   /// ------------------------------------------------------------------------------------------------------
