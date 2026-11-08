@@ -995,9 +995,7 @@ pub fn merge(left: &str, right: &str) -> String {
 /// ----------------------------------------------------------------------------------------------------------
 /// @fn fetch
 ///
-/// retrieves the plain text string located at the given coordinates.
-/// important: this can be optimized with hash tables and memo-ized parsing - for now let's keep it simple
-/// see my C# implementation in https://github.com/wbic16/terse-editor if you want to do that
+/// retrieves the scroll located at the given coordinates.
 ///
 /// @param phext  the raw phext buffer to search
 /// @param coord  coordinate to select the scroll from
