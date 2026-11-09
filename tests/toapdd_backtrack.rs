@@ -16,6 +16,13 @@
 //          "PRUNED depth=k path=... reason=attack".
 // Pruning is by marking: a dead child gets a PRUNED scroll and is
 // never expanded; the scroll is never removed.
+//
+// Driver/library split, stated plainly: the DFS below is driver code in
+// this file (it is cross-checked against an independent brute-force
+// scan). What libphext contributes — and what the tests pin — is the
+// persistence: every visited state is a scroll at its choice-path
+// coordinate, fetched back exactly, with coordinate<->path consistency
+// checked for all 895 stored states, and implode(explode(..)) fidelity.
 
 use libphext::phext;
 use std::collections::{BTreeSet, HashMap};
