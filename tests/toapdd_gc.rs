@@ -1,7 +1,16 @@
-// TOAPDD §2.3.5 — Lists and garbage collection (phext-native)
-// Graph: node scrolls link via "-> <coordinate>" lines in content.
-// Mark phase = traversal from roots via fetch; live = exactly reachable.
-// Collection = writing a MARKS scroll, never silent deletion.
+// TOAPDD #12 — Knuth TAOCP Vol.1 §2.3.5 Lists and garbage collection.
+//
+// Phext-native claim: reachability can be READ instead of computed
+// destructively. Roots and references are links between scrolls, so the
+// live set is a traversal over fetch(); "collection" writes one inspectable
+// MARKS scroll and deletes nothing — every node stays byte-identical, and
+// the marks scroll alone reproduces the live/garbage partition afterwards.
+//
+// Honesty note: the mark-phase BFS below is driver code in this file; what
+// libphext contributes — and what the tests pin — is fetch-based traversal,
+// phokenize/index enumeration of exactly the stored nodes, and insert of
+// the MARKS scroll leaving all other scrolls untouched.
+// Graph encoding: node scrolls link via "-> <coordinate>" lines in content.
 use libphext::phext::{fetch, index, insert, phokenize, to_coordinate};
 use std::collections::{BTreeSet, HashSet, VecDeque};
 

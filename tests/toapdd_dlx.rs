@@ -179,8 +179,14 @@ fn solver_finds_all_exact_covers_and_they_verify() {
     }
 }
 
+// What this test proves is the PATTERN, stated precisely: cover() returns
+// a new version string and never mutates its input, so an earlier version
+// remains fully parseable after later choices — backtracking is re-reading
+// it. (String equality with a clone is Rust's value semantics, the premise
+// of the pattern, not a libphext property; the libphext-facing content is
+// that parse() via explode still recovers every version exactly.)
 #[test]
-fn versioned_choices_are_immutable_no_dance_undo() {
+fn versioned_choices_keep_prior_versions_addressable_no_dance_undo() {
     let v0 = build_matrix();
     let v0_snapshot = v0.clone();
     let v0_checksum = phext::checksum(&v0);

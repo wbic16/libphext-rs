@@ -183,6 +183,9 @@ fn strings(values: &[&str]) -> Vec<String> {
     values.iter().map(|s| s.to_string()).collect()
 }
 
+// Encoding-spec test: the coordinate arithmetic checked in the first
+// half is this file's own encoding; the second half pins the library
+// (every node fetches back its value at its path coordinate).
 #[test]
 fn encoding_places_each_node_at_its_path_coordinate() {
     // root, and one node per interesting shape of path

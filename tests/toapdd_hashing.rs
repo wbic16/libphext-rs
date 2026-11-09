@@ -57,6 +57,11 @@ fn non_empty_coords(p: &str) -> Vec<phext::Coordinate> {
         .collect()
 }
 
+// Note: the neighbourhood here is BY CONSTRUCTION — this fixture assigns
+// garden scrolls to nearby coordinates by hand, so the distance asserts
+// check the fixture's geometry. What it demonstrates is that meaning-found
+// addresses CAN cluster (a hash of the texts could not); the refusal
+// itself is proved by the two checksum tests below.
 #[test]
 fn coordinate_identity_preserves_meaning_neighbourhood() {
     let p = fixture();

@@ -10,8 +10,9 @@
 //     its key itself (fixture 2).
 //   * Ordering is then a coordinate traversal (phokenize), not a merge.
 //   * There is no tape, no run generation, no polyphase merge, and no
-//     merging code anywhere in this file. `merge_passes` below is 0 by
-//     construction, and sortedness holds on the FIRST traversal.
+//     merging code anywhere in this file: zero merge passes is true by
+//     construction, so no assertion is wasted on it — sortedness of the
+//     FIRST traversal is the claim, and it is asserted directly.
 //
 // Honesty note (fixture 1): the driver does ONE in-memory sort to assign
 // rank coordinates. That is exactly the point — address assignment replaces
@@ -73,7 +74,6 @@ fn build_fixture1() -> (String, Vec<String>) {
 
 #[test]
 fn rank_coordinates_yield_sorted_order_with_zero_merge_passes() {
-    let merge_passes: usize = 0; // by construction: no run/merge code exists
     let (p, sorted) = build_fixture1();
 
     // First (and only) traversal must already be sorted.
@@ -83,7 +83,6 @@ fn rank_coordinates_yield_sorted_order_with_zero_merge_passes() {
     for w in got.windows(2) {
         assert!(w[0] < w[1], "strictly sorted: {:?} < {:?}", w[0], w[1]);
     }
-    assert_eq!(merge_passes, 0);
     // Each record is fetchable at exactly its rank coordinate.
     for (i, key) in sorted.iter().enumerate() {
         assert_eq!(&phext::fetch(&p, coord_scroll(i + 1)), key);
@@ -122,7 +121,6 @@ fn sorted_keys2() -> Vec<u32> {
 
 #[test]
 fn key_derived_coordinates_yield_sorted_order_with_zero_merge_passes() {
-    let merge_passes: usize = 0;
     let p = build_fixture2();
     let got: Vec<u32> = non_empty_traversal(&p)
         .iter()
@@ -133,12 +131,10 @@ fn key_derived_coordinates_yield_sorted_order_with_zero_merge_passes() {
     for w in got.windows(2) {
         assert!(w[0] < w[1]);
     }
-    assert_eq!(merge_passes, 0);
 }
 
 #[test]
 fn late_insert_at_key_coordinate_replaces_nothing() {
-    let merge_passes: usize = 0;
     let p = build_fixture2();
     let before = phext::explode(&p);
 
@@ -173,5 +169,4 @@ fn late_insert_at_key_coordinate_replaces_nothing() {
     expect.sort_unstable();
     assert_eq!(got.len(), 41);
     assert_eq!(got, expect);
-    assert_eq!(merge_passes, 0);
 }

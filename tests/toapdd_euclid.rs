@@ -40,8 +40,11 @@ fn build_algorithm_phext(m: u64, n: u64) -> String {
 /// Driver: reads operands from scrolls, appends one trace scroll per
 /// remainder step, returns (phext_with_trace, gcd).
 fn run_euclid(phext_in: &str) -> (String, u64) {
-    // The driver follows the step-scrolls it can fetch — steps are data it
-    // reads, not code compiled into it beyond the arithmetic itself.
+    // The driver checks the step-scrolls are present (keyword asserts
+    // below) and then executes the arithmetic compiled into it — it does
+    // not interpret the step texts. The phext-facing claim is storage:
+    // steps, operands, and the resulting trace are all fetchable scrolls,
+    // and the trace replays as a proof (see replay()).
     assert!(phext::fetch(phext_in, e1()).contains("remainder"));
     assert!(phext::fetch(phext_in, e2()).contains("zero"));
     assert!(phext::fetch(phext_in, e3()).contains("return to E1"));
