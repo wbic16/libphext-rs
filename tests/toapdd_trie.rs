@@ -162,6 +162,10 @@ const FIXTURE: &[(&str, &str)] = &[
     ("try", "value:try"),
 ];
 
+// Encoding-spec test: this exercises THIS FILE's encode/decode functions
+// (the encoding documented at the top is the specification under test).
+// The libphext-facing claims — fetch, insert locality, enumeration — are
+// pinned by the tests below, not by this one.
 #[test]
 fn shared_prefix_is_shared_coordinate_prefix() {
     // Roundtrip: every fixture key survives encode -> decode.
