@@ -8,6 +8,14 @@
 // order; phext gives the visited points addresses that persist after the
 // visit.
 //
+// Driver/library split, stated plainly: the generation drivers below
+// (Lehmer-code ranks, tuple enumeration) are code in this file. What
+// libphext contributes — and what the tests pin — is that phokenize
+// traversal yields the stored objects in coordinate order, that the
+// coordinate order equals the generation order under these encodings,
+// and that insert()-ing later objects never disturbs earlier scrolls,
+// so resumption is a coordinate filter, not a replay.
+//
 // Encodings (documented, and verified by the tests below):
 //
 // * Permutations of [0,1,2,3], lexicographic order. The generation path is
