@@ -1,6 +1,15 @@
 // TOAPDD #15 — Optimum binary search trees (§6.2.2) + binary search (§6.2.1, Algorithm B)
 // Public API only: libphext::phext
 //
+// Scope, stated plainly: no optimum search tree is constructed in this
+// file. What §6.2.2 contributes here is its premise — shape should follow
+// use — carried as data: access counts are scrolls, updated by fetch +
+// replace on the count scroll alone, so placement advice stays revisable
+// without rebuilding anything (test 3 pins exactly which scrolls change).
+// The search itself is Knuth's Algorithm B re-implemented as a driver
+// over fetch() (test 1), and test 2 pins offset()'s real semantics
+// against the raw serialized string.
+//
 // Design:
 //  * Key records: one scroll per key, at successive coordinates
 //    1.1.1/1.1.1/1.1.<rank+1>  (chapter 1, section 1, scroll = rank+1).
