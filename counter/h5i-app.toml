@@ -1,0 +1,24 @@
+# Read by `h5i app`: extract, check, prove, mutate, doctor.
+
+[extract]
+crate = "kernel"
+# Charon starts here and extracts what it reaches.
+start-from = ["transition"]
+
+[check]
+# Must exist and use only Lean's standard axioms. Every theorem in a
+# hand-written module under proofs/ is gated anyway; naming the main ones
+# here catches a rename.
+theorems = ["counter_kernel.inv_preserved", "counter_kernel.incr_below_limit", "counter_kernel.reset_zero"]
+
+# Bugs the proofs must reject (`h5i app mutate`). Each `old` must occur
+# exactly once in kernel/src/lib.rs (or in `file`).
+[[mutant]]
+name = "off_by_one_limit"
+old = "if s.count >= s.limit {"
+new = "if s.count > s.limit {"
+
+[[mutant]]
+name = "reset_keeps_count"
+old = "Command::Reset => Ok(State { count: 0, limit: s.limit }),"
+new = "Command::Reset => Ok(State { count: s.count, limit: s.limit }),"

@@ -1,0 +1,10 @@
+[package]
+name = "counter-kernel"
+edition = "2024"
+version = "0.1.0"
+publish = false
+
+# Extracted to Lean by `h5i app extract`. Keep it to the Rust that Charon and
+# Aeneas translate, and its dependencies to crates that are extracted with it
+# (h5i-app-std, h5i-app-sql, h5i-app-schema), never I/O.
+[dependencies]

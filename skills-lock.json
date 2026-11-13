@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "h5i": {
+      "source": "h5i-dev/h5i",
+      "sourceType": "github",
+      "skillPath": "skills/h5i/SKILL.md",
+      "computedHash": "51c2e9d0456dc751e34ac267f9cf7fa941bc5f5dc98cecfb5218e8661b80d261"
+    }
+  }
+}
