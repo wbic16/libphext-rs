@@ -211,3 +211,11 @@ fn multiverse_addressing() {
     let (n, _) = crate::phext::parse_universe_address("$12:2.1.1/1.1.1/1.1.1").unwrap();
     assert_eq!(n, 12);
 }
+
+#[test]
+fn adjacent_closes_are_two_empty_chains() {
+    let chains = crate::phext::parse_chains("\x03\x03");
+    assert_eq!(chains.len(), 2);
+    assert!(chains.iter().all(|c| c.closed));
+    assert_eq!(crate::phext::serialize_chains(&chains), "\x03\x03");
+}
