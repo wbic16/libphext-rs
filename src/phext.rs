@@ -1501,3 +1501,34 @@ impl Coordinate {
     self.x.scroll = 1;
   }
 }
+// -----------------------------------------------------------------------------------------------------------
+// Multiverse addressing (Will, 2026-11-13): inside a chain (a multiverse), each member phext is a
+// universe indexed from 1. "$N:<address>" names a scroll in universe N; the "1:" may be omitted,
+// and a chain-free phext is a single universe at multiverse 1.
+// -----------------------------------------------------------------------------------------------------------
+pub fn parse_universe_address(address: &str) -> Option<(usize, Coordinate)> {
+    let (universe, coord_part) = match address.strip_prefix('$') {
+        Some(rest) => {
+            let (num, coord) = rest.split_once(':')?;
+            let n: usize = num.parse().ok()?;
+            if n < 1 { return None; }
+            (n, coord)
+        }
+        None => (1, address),
+    };
+    Some((universe, to_coordinate(coord_part)))
+}
+
+impl Chain {
+    /// Fetch a scroll by multiverse address: "$N:coord", or a bare coordinate (universe 1).
+    /// Out-of-range universes and missing scrolls yield an empty string, as fetch does.
+    pub fn fetch(&self, address: &str) -> String {
+        match parse_universe_address(address) {
+            Some((universe, coord)) => match self.members.get(universe - 1) {
+                Some(member) => fetch(member, coord),
+                None => String::new(),
+            },
+            None => String::new(),
+        }
+    }
+}

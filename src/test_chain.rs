@@ -196,3 +196,18 @@ mod tests {
         roundtrip("x\x17y\x02z\x17w\x03");
     }
 }
+
+#[test]
+fn multiverse_addressing() {
+    let chain = crate::phext::Chain {
+        members: vec!["U1 home".to_string(), "U2 home".to_string()],
+        closed: true,
+    };
+    assert_eq!(chain.fetch("1.1.1/1.1.1/1.1.1"), "U1 home");
+    assert_eq!(chain.fetch("$1:1.1.1/1.1.1/1.1.1"), "U1 home");
+    assert_eq!(chain.fetch("$2:1.1.1/1.1.1/1.1.1"), "U2 home");
+    assert_eq!(chain.fetch("$3:1.1.1/1.1.1/1.1.1"), "");
+    assert_eq!(crate::phext::parse_universe_address("$0:1.1.1/1.1.1/1.1.1"), None);
+    let (n, _) = crate::phext::parse_universe_address("$12:2.1.1/1.1.1/1.1.1").unwrap();
+    assert_eq!(n, 12);
+}
