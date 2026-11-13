@@ -60,6 +60,11 @@
 ///   shelf break       0x1F      =1   =1   =1   =1   =1   =1   =1   =1   =1   +1
 ///   library break     0x01      =1   =1   =1   =1   =1   =1   =1   =1   =1   =1   +1
 ///
+/// Above the library break sits the stream level (0.6.0): whole phexts joined into chains.
+///
+///   chain break       0x02      separates whole phexts within a chain
+///   chain close       0x03      terminates a chain; a chain ending without it is unclosed
+///
 /// History Fork
 /// ------------
 /// Phext files are a natural fork of plain text. They add hierarchy
@@ -82,6 +87,8 @@ pub const COORDINATE_MINIMUM: usize = 1;    // human numbering - we start at 1, 
 // coordinate components are unbounded as of 0.4.0 (the 999 cap was removed; see the
 // dense-graph warning on `Coordinate` below)
 pub const LIBRARY_BREAK: char = '\x01';    // 11th dimension - replaces start of header
+pub const CHAIN_BREAK: char = '\x02';      // stream level - separates whole phexts within a chain; replaces start of text
+pub const CHAIN_CLOSE: char = '\x03';      // stream level - terminates a chain; replaces end of text
 pub const MORE_COWBELL: char = '\x07';     // i've got a fever, and the only prescription...is more cowbell!
 pub const LINE_BREAK: char = '\x0A';       // same as plain text \o/
 pub const SCROLL_BREAK: char = '\x17';     // 3D Break - replaces End Transmission Block
@@ -97,6 +104,8 @@ pub const SHELF_BREAK: char = '\x1F';      // 10D Break - replaces unit separato
 // Aeneas cannot translate casts between char and int today, so byte code
 // compares and pushes these twins instead of converting the char constants.
 pub const LIBRARY_BREAK_U8: u8 = 0x01;    // byte form of LIBRARY_BREAK
+pub const CHAIN_BREAK_U8: u8 = 0x02;      // byte form of CHAIN_BREAK
+pub const CHAIN_CLOSE_U8: u8 = 0x03;      // byte form of CHAIN_CLOSE
 pub const MORE_COWBELL_U8: u8 = 0x07;     // byte form of MORE_COWBELL
 pub const LINE_BREAK_U8: u8 = 0x0A;       // byte form of LINE_BREAK
 pub const SCROLL_BREAK_U8: u8 = 0x17;     // byte form of SCROLL_BREAK
@@ -118,13 +127,16 @@ pub const ADDRESS_MACRO_ALT: u8 = b';';   // also allow ';' for url encoding
 /// phext retains backwards compatibility for a wide portion of ascii and utf8 documents. below is a summary
 /// of character codes that have been retained for future growth and/or backwards-compatibility.
 /// ----------------------------------------------------------------------------------------------------------
+/// claimed in 0.6.0
+/// ----------------
+/// * start of text = 0x02: the chain break (see CHAIN_BREAK)
+/// * end of text = 0x03: the chain close (see CHAIN_CLOSE)
+///
 /// not widely used
 /// ---------------
 /// these are most useful for transmission protocols, but since http won that war, they have fallen out of
 /// common use. we could evaluate some of the other characters that were kicked out above relative to these.
 ///
-/// * start of text = 0x02
-/// * end of text = 0x03
 /// * end of transmission = 0x04
 /// * enquery = 0x05
 /// * ack = 0x06
@@ -1174,6 +1186,92 @@ pub fn is_phext_break(byte: u8) -> bool {
 pub fn normalize(input: &str) -> String {
   let mut arr = phokenize(input);
   dephokenize(&mut arr)
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @struct Chain
+///
+/// A chain: an ordered series of complete phexts within one stream, joined by CHAIN_BREAK (0x02) and
+/// optionally terminated by CHAIN_CLOSE (0x03). The chain layer is a stream-level layer, one rung
+/// above the library break: the nine dimension breaks structure a single phext, while the two chain
+/// bytes structure a stream of phexts. Each member is a whole phext, worked with the ordinary phext
+/// functions in this module; read in succession, a chain's members are editions in sequence — the
+/// chain is how a phext stream encodes time.
+///
+/// `closed` records how the chain ended: true when a CHAIN_CLOSE terminated it, false when the
+/// stream simply ran out (EOF). A chain that ends at EOF is unclosed — possibly truncated — and is
+/// never silently promoted to closed. A stream with no chain bytes at all is a single unclosed
+/// chain holding one member phext: every pre-0.6 phext reads this way.
+/// ----------------------------------------------------------------------------------------------------------
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Clone)]
+pub struct Chain {
+  pub members: Vec<String>,
+  pub closed: bool
+}
+impl Chain {
+  pub fn new() -> Chain {
+    Chain { members: Vec::new(), closed: false }
+  }
+
+  /// ------------------------------------------------------------------------------------------------------
+  /// @fn serialize
+  ///
+  /// serializes this chain alone: its members joined by CHAIN_BREAK, with a trailing CHAIN_CLOSE
+  /// when the chain is closed. See `serialize_chains` for whole streams.
+  /// ------------------------------------------------------------------------------------------------------
+  pub fn serialize(&self) -> String {
+    let mut result = String::new();
+    let mut first = true;
+    for member in &self.members {
+      if !first { result.push(CHAIN_BREAK); }
+      first = false;
+      result.push_str(member);
+    }
+    if self.closed { result.push(CHAIN_CLOSE); }
+    result
+  }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn parse_chains
+///
+/// splits a stream into its chains. CHAIN_BREAK separates the member phexts of a chain; CHAIN_CLOSE
+/// terminates a chain, and whatever follows it opens the next one — so one stream may hold many
+/// chains. The stream's final chain is closed only when the stream ends with CHAIN_CLOSE.
+///
+/// Splitting follows `split_on` semantics, so empty members and empty chains are preserved exactly:
+/// parse and serialize are byte-exact inverses for every stream.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn parse_chains(input: &str) -> Vec<Chain> {
+  let ends_closed = input.ends_with(CHAIN_CLOSE);
+  let mut segments = split_on(input, CHAIN_CLOSE);
+  if ends_closed {
+    // split_on preserves the empty tail after a trailing delimiter; that
+    // tail is the end of the stream, not the start of another chain
+    segments.pop();
+  }
+  let count = segments.len();
+  let mut chains: Vec<Chain> = Vec::new();
+  let mut i = 0;
+  for segment in segments {
+    let closed = ends_closed || i + 1 < count;
+    chains.push(Chain { members: split_on(segment.as_str(), CHAIN_BREAK), closed });
+    i += 1;
+  }
+  chains
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn serialize_chains
+///
+/// serializes a stream of chains back into stream bytes: the inverse of `parse_chains`.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn serialize_chains(chains: &[Chain]) -> String {
+  let mut result = String::new();
+  for chain in chains {
+    result.push_str(chain.serialize().as_str());
+  }
+  result
 }
 
 /// ----------------------------------------------------------------------------------------------------------

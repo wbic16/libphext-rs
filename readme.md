@@ -65,6 +65,14 @@ Compression is a seal, not a working format. A phext is authored, edited, and qu
 
 Both features are optional and off by default: the core crate keeps its single `xxh3` dependency. Enable them with `features = ["binary", "xz"]`.
 
+## Chains (0.6.0)
+
+A phext stream can hold more than one phext. The chain break (0x02) separates whole phexts within a **chain**, and the chain close (0x03) terminates a chain — one stream may hold many chains in succession. The chain bytes form a stream-level layer, one rung above the library break: the nine dimension breaks structure a single phext, the chain bytes structure a stream of phexts. Read in order, a chain's members are editions in sequence — the chain layer is how a phext stream encodes time.
+
+A chain that ends at EOF without a chain close is *unclosed* — possibly truncated — and the API keeps that distinction explicit (`Chain.closed`). A stream with no chain bytes at all parses as a single unclosed chain holding one phext, so pre-0.6 documents read exactly as before, and every single-phext function is untouched: chain bytes are not dimension breaks.
+
+API: `phext::parse_chains` splits a stream into `Chain { members, closed }` values — each member a complete phext string for use with `fetch`, `explode`, and friends — and `phext::serialize_chains` writes them back byte-for-byte.
+
 ## Build
 
 1. Clone this repo
