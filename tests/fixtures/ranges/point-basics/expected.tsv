@@ -1,0 +1,28 @@
+case	point-basics
+input_bytes	72
+input_sha256	772695e71f0a6a8d4e2a42244ab66b4224c9d276fd47449cc1220dcb4e3e8db2
+ops	24
+op	parse_point	$3:1.1.1/1.1.1/1.1.1@24,5	canonical=$3:1.1.1/1.1.1/1.1.1@24,5	error=false
+op	parse_point	$1:1.1.1/1.1.1/1.1.1@24,5	canonical=1.1.1/1.1.1/1.1.1@24,5	error=false
+op	parse_point	1.1.1/1.1.1/1.1.1@024,005	canonical=1.1.1/1.1.1/1.1.1@24,5	error=false
+op	parse_point	1.1.1/1.1.1/1.1.2	canonical=1.1.1/1.1.1/1.1.2	error=false
+op	parse_point	1.1.1/1.1.1/1.1.1@24,5+10	canonical=1.1.1/1.1.1/1.1.1@24,5+10	error=false
+op	parse_point	$0:1.1.1/1.1.1/1.1.1@1,1	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/1.1.1@0,5	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/1.1.1@24,0	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/0.1.1@1,1	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/1.1.1@24	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/1.1.1@24,5+	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/1.1.1@24,+5	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1/1.1.1@24,5@1,1	canonical=-	error=true
+op	parse_point	1.1.1/1.1.1@1,1	canonical=-	error=true
+op	resolve_point	1.1.1/1.1.1/1.1.1@1,1	resolve=1|1.1.1/1.1.1/1.1.1|0	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.1@1,12	resolve=1|1.1.1/1.1.1/1.1.1|11	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.1@2,3	resolve=1|1.1.1/1.1.1/1.1.1|14	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.1@3,13	resolve=1|1.1.1/1.1.1/1.1.1|38	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.1@1,13	resolve=-	error=true
+op	resolve_point	1.1.1/1.1.1/1.1.1@4,1	resolve=-	error=true
+op	resolve_point	1.1.1/1.1.1/1.1.2@2,1	resolve=1|1.1.1/1.1.1/1.1.2|14	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.2@3,10	resolve=1|1.1.1/1.1.1/1.1.2|32	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.9@1,1	resolve=-	error=true
+op	resolve_point	$2:1.1.1/1.1.1/1.1.1@1,1	resolve=-	error=true

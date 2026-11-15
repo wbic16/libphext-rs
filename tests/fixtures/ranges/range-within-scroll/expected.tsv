@@ -1,0 +1,16 @@
+case	range-within-scroll
+input_bytes	49
+input_sha256	fc322f1a9c7eaabdd675e59f77e1fd42c2587a13d9e0f950bdf7224c354ba314
+ops	12
+op	parse_range	1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9	canonical=1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9	error=false
+op	parse_range	1.1.1/1.1.1/1.1.1@24,9-1.1.1/1.1.1/1.1.1@24,5	canonical=1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9	error=false
+op	parse_range	1.1.1/1.1.1/1.1.1@024,005-1.1.1/1.1.1/1.1.1@24,9	canonical=1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9	error=false
+op	parse_range	1.1.1/1.1.1/1.1.1@1,1+3-1.1.1/1.1.1/1.1.1@1,5	canonical=-	error=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@1,6	file=results/04.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,5-1.1.1/1.1.1/1.1.1@1,9	file=results/05.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@2,1-1.1.1/1.1.1/1.1.1@3,1	file=results/06.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@4,11	file=results/07.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@2,4-1.1.1/1.1.1/1.1.1@2,4	file=results/08.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,6-1.1.1/1.1.1/1.1.1@1,1	file=results/09.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@5,1	file=results/10.txt	resolved=false
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@1,13	file=results/11.txt	resolved=false
