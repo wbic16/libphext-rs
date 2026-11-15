@@ -943,7 +943,14 @@ pub fn explode(input: &str) -> HashMap<Coordinate, String> {
   let parts = phokenize(input);
   let mut hash = HashMap::new();
   for row in parts {
-    hash.insert(row.coord, row.scroll);
+    // A scroll exists iff it holds at least one byte — that is the phext
+    // definition. Delimiter runs between distant scrolls tokenize as empty
+    // positioned slots; they are addressing, not content, and never
+    // materialize here. (phokenize still reports them: it is the
+    // tokenizer. Existence semantics live in explode.)
+    if !row.scroll.is_empty() {
+      hash.insert(row.coord, row.scroll);
+    }
   }
   hash
 }
@@ -1110,8 +1117,13 @@ fn dephokenize(tokens: &mut Vec<PositionedScroll>) -> String {
   for ps in tokens {
     if !ps.scroll.is_empty() {
       append_scroll(&mut result, ps, coord);
+      // The tracked coordinate advances only when bytes were emitted.
+      // Advancing it for a skipped empty scroll undercounts the breaks
+      // the next scroll needs and misplaces every scroll after it —
+      // the mirror image of the explode defect (empty scrolls do not
+      // exist, so they cannot move the write position).
+      coord = ps.coord;
     }
-    coord = ps.coord;
   }
   result
 }
@@ -1823,4 +1835,232 @@ impl Chain {
     }
     Chain { members, closed: false }.serialize()
   }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// v0.6.2 — append, integrity, and commit primitives.
+///
+/// These exist because a phext *store* (see the Holostore re-implementation
+/// in wbic16/holostore, PHEXT.md round 2) needs three things the document
+/// API did not say: how to extend a document at its end without rebuilding
+/// it, how to tell a complete scroll from a torn one, and how to tell a
+/// complete batch from a torn one. Each primitive is small, uses no new
+/// dependencies, and states its own limit.
+/// ----------------------------------------------------------------------------------------------------------
+
+/// The trailer line of a checked scroll: a newline, this marker, and the
+/// xxh3-128 checksum (the existing `checksum`) of everything before it.
+const CHECK_MARKER: &str = "\nphext-check:xxh3-128:";
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn checked_scroll
+///
+/// Returns `scroll` with an integrity trailer appended: one final line
+/// `phext-check:xxh3-128:<checksum of the payload>`. In a checked scroll
+/// the final line is reserved — verification always reads the LAST marker
+/// line, and the checksum binds the entire payload before it, so a marker
+/// line inside the payload cannot forge a trailer.
+///
+/// The checksum detects accidental corruption and torn writes. xxh3 is
+/// not a cryptographic hash: this is integrity, not authentication.
+/// An empty scroll stays empty (a scroll with no bytes does not exist,
+/// so there is nothing to check).
+/// ----------------------------------------------------------------------------------------------------------
+pub fn checked_scroll(scroll: &str) -> String {
+  if scroll.is_empty() {
+    return String::new();
+  }
+  format!("{}{}{}", scroll, CHECK_MARKER, checksum(scroll))
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn verify_checked_scroll
+///
+/// true when `scroll` ends with a well-formed integrity trailer whose
+/// checksum matches the payload before it.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn verify_checked_scroll(scroll: &str) -> bool {
+  match scroll.rfind(CHECK_MARKER) {
+    Some(at) => {
+      let (payload, trailer) = scroll.split_at(at);
+      let hex = &trailer[CHECK_MARKER.len()..];
+      hex.len() == 32 && hex.bytes().all(|b| b.is_ascii_hexdigit()) && checksum(payload) == hex
+    }
+    None => false,
+  }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn uncheck_scroll
+///
+/// Returns the payload of a checked scroll when its trailer verifies;
+/// None for unchecked, malformed, or corrupted scrolls.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn uncheck_scroll(scroll: &str) -> Option<String> {
+  if verify_checked_scroll(scroll) {
+    let at = scroll.rfind(CHECK_MARKER)?;
+    Some(scroll[..at].to_string())
+  } else {
+    None
+  }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn fetch_checked
+///
+/// Fetches the scroll at `target` and returns its payload, but only when
+/// the scroll is checked and verifies. A missing, unchecked, or torn
+/// scroll yields None — recovery code can treat None as "not committed".
+/// ----------------------------------------------------------------------------------------------------------
+pub fn fetch_checked(input: &str, target: Coordinate) -> Option<String> {
+  uncheck_scroll(&fetch(input, target))
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn append
+///
+/// Appends `scroll` at `location`, which must sort strictly after the
+/// document's last non-empty scroll. The result is the input with only a
+/// delimiter run and the new content added at its end — a host can write
+/// just that suffix to a file opened in append mode and sync once.
+///
+/// Returns None when the scroll is empty (empty scrolls do not exist) or
+/// `location` does not sort after the document's end. Trailing delimiter
+/// bytes in the input encode only empty scrolls, so they are dropped
+/// first and never shift the appended scroll's address.
+///
+/// On None the append was rejected; the input String was consumed, so
+/// pass a clone if the caller needs it after a rejected append.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn append(input: String, location: Coordinate, scroll: &str) -> Option<String> {
+  if scroll.is_empty() {
+    return None;
+  }
+  let keep = input
+    .as_bytes()
+    .iter()
+    .rposition(|b| !is_dimension_break(*b))
+    .map(|i| i + 1)
+    .unwrap_or(0);
+  let token = PositionedScroll { coord: location, scroll: scroll.to_string() };
+  if keep == 0 {
+    let mut out = String::new();
+    append_scroll(&mut out, &token, default_coordinate());
+    return Some(out);
+  }
+  let mut out = input[..keep].to_string();
+  let parts = phokenize(&out);
+  let last = parts.iter().rev().find(|p| !p.scroll.is_empty())?;
+  if location <= last.coord {
+    return None;
+  }
+  append_scroll(&mut out, &token, last.coord);
+  Some(out)
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn append_checked
+///
+/// `append` with an integrity trailer: the stored scroll is
+/// `checked_scroll(scroll)`, verifiable later with `fetch_checked`.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn append_checked(input: String, location: Coordinate, scroll: &str) -> Option<String> {
+  append(input, location, &checked_scroll(scroll))
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn append_batch
+///
+/// Appends several scrolls in one call. Entries must be non-empty and in
+/// strictly ascending coordinate order, the first sorting after the
+/// document's end. The whole batch is a single suffix of the result, so
+/// a host persists it with one write and one sync.
+///
+/// This is construction atomicity, not storage atomicity: whether the
+/// suffix lands completely is the host filesystem's business (see the
+/// durability profile in the crate docs). Pair the batch with a
+/// `commit_scroll` as its final entry to make a torn batch *detectable*
+/// at recovery — that is the part a format library can own.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn append_batch(input: String, entries: &[(Coordinate, &str)]) -> Option<String> {
+  if entries.is_empty() {
+    return None;
+  }
+  for pair in entries.windows(2) {
+    if pair[1].0 <= pair[0].0 {
+      return None;
+    }
+  }
+  let mut out = append(input, entries[0].0, entries[0].1)?;
+  let mut coord = entries[0].0;
+  for (location, scroll) in &entries[1..] {
+    if scroll.is_empty() {
+      return None;
+    }
+    append_scroll(&mut out, &PositionedScroll { coord: *location, scroll: scroll.to_string() }, coord);
+    coord = *location;
+  }
+  Some(out)
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn commit_scroll
+///
+/// Builds the commit marker for a batch: a small scroll binding the
+/// batch's entry count and a checksum over each entry's coordinate and
+/// content, in order. Append it (via `append_batch`) as the batch's
+/// final scroll, at a coordinate after every entry. `entries` here are
+/// the (coordinate, content) pairs exactly as appended — checked
+/// contents included, when the batch uses checked scrolls.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn commit_scroll(entries: &[(Coordinate, &str)]) -> String {
+  let mut material = String::new();
+  for (coord, content) in entries {
+    material.push_str(&coord.to_string());
+    material.push('\n');
+    material.push_str(content);
+    material.push('\n');
+  }
+  format!("phext-commit:1\ncount={}\ncheck={}", entries.len(), checksum(&material))
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn verify_commit
+///
+/// true when the scroll at `commit` is a commit marker whose count
+/// matches `entries` and whose checksum matches the entries' current
+/// contents, fetched in order. Any missing, altered, or torn entry —
+/// or a missing marker — yields false: the batch did not commit.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn verify_commit(input: &str, entries: &[Coordinate], commit: Coordinate) -> bool {
+  let text = fetch(input, commit);
+  let mut lines = text.lines();
+  if lines.next() != Some("phext-commit:1") {
+    return false;
+  }
+  let mut count: Option<usize> = None;
+  let mut check: Option<&str> = None;
+  for line in lines {
+    if let Some(v) = line.strip_prefix("count=") {
+      count = v.parse().ok();
+    }
+    if let Some(v) = line.strip_prefix("check=") {
+      check = Some(v);
+    }
+  }
+  if count != Some(entries.len()) {
+    return false;
+  }
+  let mut material = String::new();
+  for coord in entries {
+    let content = fetch(input, *coord);
+    if content.is_empty() {
+      return false;
+    }
+    material.push_str(&coord.to_string());
+    material.push('\n');
+    material.push_str(&content);
+    material.push('\n');
+  }
+  check == Some(checksum(&material).as_str())
 }

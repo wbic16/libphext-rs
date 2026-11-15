@@ -37,6 +37,18 @@ The introduction of Large Language Models (LLMs) has accelerated our transition 
 
 > **Dense graphs:** phext is sparse by design. Coordinate components are unbounded, but a fully-populated dense graph contains the product of its dimensions' extents in scrolls — a dense block spanning 1000 in each of 9 dimensions implies 10^27 scrolls. Materializing, exploding, or indexing such a graph costs memory proportional to its populated scroll count. The old 999 cap never protected against this (999^9 was already unreachable); sparsity does. Keep graphs sparse.
 
+## Durability Profile (0.6.2)
+
+libphext performs no file I/O; persistence belongs to the host. Hosts that store phexts follow three rules: (1) rewrites go to a temp file in the same directory — write all bytes, sync the file, rename over the target, sync the directory; (2) appends write one complete suffix (an `append`/`append_batch` result) in a single write and sync before acknowledging; (3) recovery trusts only what validates — checked scrolls and verified commit markers — and truncates after the last valid scroll. The full profile is in the crate-level docs (`src/lib.rs`).
+
+## Append, Integrity, and Commit (0.6.2)
+
+* `append` / `append_batch` extend a document at its end — the result differs from the input only by a suffix a host can write incrementally.
+* `checked_scroll` / `verify_checked_scroll` / `uncheck_scroll` / `fetch_checked` give a scroll an xxh3-128 integrity trailer (the existing `checksum`), so torn or corrupted scrolls are detectable.
+* `commit_scroll` / `verify_commit` bind a batch of scrolls into a marker scroll, so a torn batch is detectable at recovery.
+* `binary::encode_field` / `decode_field` standardize base64 armour for a binary value inside one line of a text scroll.
+* `explode` now honors the phext definition: a scroll exists iff it holds at least one byte, so delimiter runs no longer materialize empty scrolls.
+
 ## Binary Scrolls (feature: `binary`)
 
 Phext scrolls are text (valid UTF-8). Arbitrary binary data rides as text via base64, in one canonical format that every phext implementation (Rust, Python, Node, C#, C, ...) must match byte-for-byte:
