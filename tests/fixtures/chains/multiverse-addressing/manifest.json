@@ -1,0 +1,169 @@
+{
+  "case": "multiverse-addressing",
+  "chains": [
+    {
+      "chain_index": 0,
+      "closed": true,
+      "members": [
+        {
+          "bytes": 33,
+          "member_index": 0,
+          "scroll_count": 2,
+          "scrolls": [
+            {
+              "b": 15,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "d356ec89fbbe7cb45fa47a1b8381118ff6d5937a8e09e9ee785e61a04487be05"
+            },
+            {
+              "b": 17,
+              "c": "1.1.1/1.1.1/1.1.2",
+              "s": "bc3a99c09662c24bb0e6c057c96bbd912d05bf3c0818e5163dfb9f23afea9ddf"
+            }
+          ],
+          "sha256": "2b85ee415de481512937731a610167aa1da1adf4ae9f41ca8a75675d3ef24546",
+          "universe": 1
+        },
+        {
+          "bytes": 40,
+          "member_index": 1,
+          "scroll_count": 2,
+          "scrolls": [
+            {
+              "b": 15,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "fcf878fa1be269e454b05659f41fbca62fce96281081a407ad571c142fd0086b"
+            },
+            {
+              "b": 23,
+              "c": "1.1.1/1.1.1/1.1.3",
+              "s": "15eb9bb064facff1aa4728c2ebce94c0fb26637e8134281af2148e52235926fb"
+            }
+          ],
+          "sha256": "0c0d2dab97b879f5bf8322d993a0a6c2ab599662e3c33a0c70bf76974baafa6b",
+          "universe": 2
+        },
+        {
+          "bytes": 15,
+          "member_index": 2,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 15,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "ee4d44e6645eee76e44e4066c01db1cbe2354cc2cbab2824a2b223dfaff77cf5"
+            }
+          ],
+          "sha256": "ee4d44e6645eee76e44e4066c01db1cbe2354cc2cbab2824a2b223dfaff77cf5",
+          "universe": 3
+        }
+      ]
+    }
+  ],
+  "description": "The $N: addressing case set, over one closed chain of three universes. Bare address = universe 1; $2:/$3: fetch the same coordinate in universes 2 and 3; $2:...1.1.3 fetches a scroll that exists only in universe 2; $3:...1.1.3 is a miss in a universe that lacks the scroll; $4: is a miss in a universe that does not exist. A miss returns the empty string from Chain::fetch, exactly like a present-but-empty scroll; the manifest's found flag (coordinate present in that member's phokenize list) is the only distinction.",
+  "fetches": [
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 15,
+      "expected_file": "fetches/00.txt",
+      "expected_sha256": "d356ec89fbbe7cb45fa47a1b8381118ff6d5937a8e09e9ee785e61a04487be05",
+      "expected_text": "Universe 1 home",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 15,
+      "expected_file": "fetches/01.txt",
+      "expected_sha256": "d356ec89fbbe7cb45fa47a1b8381118ff6d5937a8e09e9ee785e61a04487be05",
+      "expected_text": "Universe 1 home",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 15,
+      "expected_file": "fetches/02.txt",
+      "expected_sha256": "fcf878fa1be269e454b05659f41fbca62fce96281081a407ad571c142fd0086b",
+      "expected_text": "Universe 2 home",
+      "found": true,
+      "universe": 2
+    },
+    {
+      "address": "$3:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 15,
+      "expected_file": "fetches/03.txt",
+      "expected_sha256": "ee4d44e6645eee76e44e4066c01db1cbe2354cc2cbab2824a2b223dfaff77cf5",
+      "expected_text": "Universe 3 home",
+      "found": true,
+      "universe": 3
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.3",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.3",
+      "expected_bytes": 23,
+      "expected_file": "fetches/04.txt",
+      "expected_sha256": "15eb9bb064facff1aa4728c2ebce94c0fb26637e8134281af2148e52235926fb",
+      "expected_text": "Universe 2 third scroll",
+      "found": true,
+      "universe": 2
+    },
+    {
+      "address": "$3:1.1.1/1.1.1/1.1.3",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.3",
+      "expected_bytes": 0,
+      "expected_file": "fetches/05.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": false,
+      "universe": 3
+    },
+    {
+      "address": "$4:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 0,
+      "expected_file": "fetches/06.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": false,
+      "universe": 4
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.2",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.2",
+      "expected_bytes": 0,
+      "expected_file": "fetches/07.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": false,
+      "universe": 2
+    },
+    {
+      "address": "1.1.1/1.1.1/1.1.2",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.2",
+      "expected_bytes": 17,
+      "expected_file": "fetches/08.txt",
+      "expected_sha256": "bc3a99c09662c24bb0e6c057c96bbd912d05bf3c0818e5163dfb9f23afea9ddf",
+      "expected_text": "Universe 1 second",
+      "found": true,
+      "universe": 1
+    }
+  ],
+  "input_bytes": 91,
+  "input_file": "input.phext",
+  "input_sha256": "70b0241efea18a13873e54b4d485814076e67221b0e7f2d87263a7f617b1a99b",
+  "roundtrip": "byte-identical: serialize_chains(parse_chains(input)) == input"
+}

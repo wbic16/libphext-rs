@@ -1,0 +1,79 @@
+{
+  "case": "unclosed-at-eof",
+  "chains": [
+    {
+      "chain_index": 0,
+      "closed": false,
+      "members": [
+        {
+          "bytes": 14,
+          "member_index": 0,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 14,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866"
+            }
+          ],
+          "sha256": "37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866",
+          "universe": 1
+        },
+        {
+          "bytes": 15,
+          "member_index": 1,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 15,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "9455612ea8d17fa6560fad916593c4d0ab3c042680418b109773866dd168e398"
+            }
+          ],
+          "sha256": "9455612ea8d17fa6560fad916593c4d0ab3c042680418b109773866dd168e398",
+          "universe": 2
+        }
+      ]
+    }
+  ],
+  "description": "Two members joined by CHAIN_BREAK, stream ends at EOF with no CHAIN_CLOSE: one chain, closed=false (truncated/unclosed is reported, never silently promoted to closed).",
+  "fetches": [
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 14,
+      "expected_file": "fetches/00.txt",
+      "expected_sha256": "37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866",
+      "expected_text": "Unclosed first",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 14,
+      "expected_file": "fetches/01.txt",
+      "expected_sha256": "37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866",
+      "expected_text": "Unclosed first",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 15,
+      "expected_file": "fetches/02.txt",
+      "expected_sha256": "9455612ea8d17fa6560fad916593c4d0ab3c042680418b109773866dd168e398",
+      "expected_text": "Unclosed second",
+      "found": true,
+      "universe": 2
+    }
+  ],
+  "input_bytes": 30,
+  "input_file": "input.phext",
+  "input_sha256": "daf1da191092c92e9a8bf596d81719ee675e24a0731c9224379c392dd9aa5c66",
+  "roundtrip": "byte-identical: serialize_chains(parse_chains(input)) == input"
+}

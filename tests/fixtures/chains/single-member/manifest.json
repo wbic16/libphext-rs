@@ -1,0 +1,91 @@
+{
+  "case": "single-member",
+  "chains": [
+    {
+      "chain_index": 0,
+      "closed": false,
+      "members": [
+        {
+          "bytes": 73,
+          "member_index": 0,
+          "scroll_count": 4,
+          "scrolls": [
+            {
+              "b": 17,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "f0fa311022e2239cceb863069cdf5f4c931f3f3781cdfdc06a24523434c12574"
+            },
+            {
+              "b": 19,
+              "c": "1.1.1/1.1.1/1.1.2",
+              "s": "0294c24d2d1dea21d87fcedf34fddba8ec442588acc2b24cdbb14b989e6c5ec7"
+            },
+            {
+              "b": 17,
+              "c": "1.1.1/1.1.1/1.2.1",
+              "s": "7ca64d2253ed49e00d4e49700365819623b09fac8b2f72257ae5e3da20bea347"
+            },
+            {
+              "b": 17,
+              "c": "1.1.1/1.1.1/2.1.1",
+              "s": "3ddefa3af1d7d1c8b7d954cfb77058ccab56a82f43eb4b06b91804c56bab09c4"
+            }
+          ],
+          "sha256": "ccd56ac27a7bcc8103f7f2a64fdc7c14edd45e93596d0b3c2cbe2cf39c18b7d2",
+          "universe": 1
+        }
+      ]
+    }
+  ],
+  "description": "One phext, no chain bytes at all: a single unclosed chain holding one member. The member has scrolls at home, scroll 2, section 2, and chapter 2.",
+  "fetches": [
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 17,
+      "expected_file": "fetches/00.txt",
+      "expected_sha256": "f0fa311022e2239cceb863069cdf5f4c931f3f3781cdfdc06a24523434c12574",
+      "expected_text": "Alpha home scroll",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 17,
+      "expected_file": "fetches/01.txt",
+      "expected_sha256": "f0fa311022e2239cceb863069cdf5f4c931f3f3781cdfdc06a24523434c12574",
+      "expected_text": "Alpha home scroll",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "1.1.1/1.1.1/1.1.2",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.2",
+      "expected_bytes": 19,
+      "expected_file": "fetches/02.txt",
+      "expected_sha256": "0294c24d2d1dea21d87fcedf34fddba8ec442588acc2b24cdbb14b989e6c5ec7",
+      "expected_text": "Alpha second scroll",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "1.1.1/1.1.1/1.2.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.2.1",
+      "expected_bytes": 17,
+      "expected_file": "fetches/03.txt",
+      "expected_sha256": "7ca64d2253ed49e00d4e49700365819623b09fac8b2f72257ae5e3da20bea347",
+      "expected_text": "Alpha section two",
+      "found": true,
+      "universe": 1
+    }
+  ],
+  "input_bytes": 73,
+  "input_file": "input.phext",
+  "input_sha256": "ccd56ac27a7bcc8103f7f2a64fdc7c14edd45e93596d0b3c2cbe2cf39c18b7d2",
+  "roundtrip": "byte-identical: serialize_chains(parse_chains(input)) == input"
+}

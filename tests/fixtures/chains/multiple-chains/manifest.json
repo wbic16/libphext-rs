@@ -1,0 +1,132 @@
+{
+  "case": "multiple-chains",
+  "chains": [
+    {
+      "chain_index": 0,
+      "closed": true,
+      "members": [
+        {
+          "bytes": 20,
+          "member_index": 0,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 20,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "194c903d4830aa007e52c2f6dcd0e1afa93d5e23f665a36bd954e7eacd458319"
+            }
+          ],
+          "sha256": "194c903d4830aa007e52c2f6dcd0e1afa93d5e23f665a36bd954e7eacd458319",
+          "universe": 1
+        },
+        {
+          "bytes": 20,
+          "member_index": 1,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 20,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "78597dddcc01f34aab84407cb8f094f6804e66f500674f8099d8cb97865a2d78"
+            }
+          ],
+          "sha256": "78597dddcc01f34aab84407cb8f094f6804e66f500674f8099d8cb97865a2d78",
+          "universe": 2
+        }
+      ]
+    },
+    {
+      "chain_index": 1,
+      "closed": true,
+      "members": [
+        {
+          "bytes": 20,
+          "member_index": 0,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 20,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "7212de167cedf780b4e8ff0b2fa56f0dc53cba733f85081c34bd4e8ec1ce024f"
+            }
+          ],
+          "sha256": "7212de167cedf780b4e8ff0b2fa56f0dc53cba733f85081c34bd4e8ec1ce024f",
+          "universe": 1
+        }
+      ]
+    }
+  ],
+  "description": "One stream holding two closed chains: chain 0 has two members, chain 1 has one member. Whatever follows a CHAIN_CLOSE opens the next chain. Fetches are per-chain (chain_index in each fetch entry).",
+  "fetches": [
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 20,
+      "expected_file": "fetches/00.txt",
+      "expected_sha256": "194c903d4830aa007e52c2f6dcd0e1afa93d5e23f665a36bd954e7eacd458319",
+      "expected_text": "Chain one member one",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 20,
+      "expected_file": "fetches/01.txt",
+      "expected_sha256": "194c903d4830aa007e52c2f6dcd0e1afa93d5e23f665a36bd954e7eacd458319",
+      "expected_text": "Chain one member one",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 20,
+      "expected_file": "fetches/02.txt",
+      "expected_sha256": "78597dddcc01f34aab84407cb8f094f6804e66f500674f8099d8cb97865a2d78",
+      "expected_text": "Chain one member two",
+      "found": true,
+      "universe": 2
+    },
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 1,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 20,
+      "expected_file": "fetches/03.txt",
+      "expected_sha256": "7212de167cedf780b4e8ff0b2fa56f0dc53cba733f85081c34bd4e8ec1ce024f",
+      "expected_text": "Chain two member one",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 1,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 20,
+      "expected_file": "fetches/04.txt",
+      "expected_sha256": "7212de167cedf780b4e8ff0b2fa56f0dc53cba733f85081c34bd4e8ec1ce024f",
+      "expected_text": "Chain two member one",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.1",
+      "chain_index": 1,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 0,
+      "expected_file": "fetches/05.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": false,
+      "universe": 2
+    }
+  ],
+  "input_bytes": 63,
+  "input_file": "input.phext",
+  "input_sha256": "b02f095f12325ce7beb653b68cc51b2e1095d70eb69f2e686920c726c1ff8d4a",
+  "roundtrip": "byte-identical: serialize_chains(parse_chains(input)) == input"
+}

@@ -1,0 +1,104 @@
+{
+  "case": "empty-member",
+  "chains": [
+    {
+      "chain_index": 0,
+      "closed": true,
+      "members": [
+        {
+          "bytes": 17,
+          "member_index": 0,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 17,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "ec49337668e6c278fa08b055b8246cb82a83796042f57f36bc88d2fd048e6b01"
+            }
+          ],
+          "sha256": "ec49337668e6c278fa08b055b8246cb82a83796042f57f36bc88d2fd048e6b01",
+          "universe": 1
+        },
+        {
+          "bytes": 0,
+          "member_index": 1,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 0,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "universe": 2
+        },
+        {
+          "bytes": 17,
+          "member_index": 2,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 17,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "2dddc9ff1c151a892083f4428fe8869f33b5adc4711ead1eb01ca93548122d50"
+            }
+          ],
+          "sha256": "2dddc9ff1c151a892083f4428fe8869f33b5adc4711ead1eb01ca93548122d50",
+          "universe": 3
+        }
+      ]
+    }
+  ],
+  "description": "A closed chain of three members whose middle member is the empty phext (CHAIN_BREAK CHAIN_BREAK with nothing between). Empty members are preserved exactly.",
+  "fetches": [
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 17,
+      "expected_file": "fetches/00.txt",
+      "expected_sha256": "ec49337668e6c278fa08b055b8246cb82a83796042f57f36bc88d2fd048e6b01",
+      "expected_text": "First member home",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 17,
+      "expected_file": "fetches/01.txt",
+      "expected_sha256": "ec49337668e6c278fa08b055b8246cb82a83796042f57f36bc88d2fd048e6b01",
+      "expected_text": "First member home",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$2:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 0,
+      "expected_file": "fetches/02.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": true,
+      "universe": 2
+    },
+    {
+      "address": "$3:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 17,
+      "expected_file": "fetches/03.txt",
+      "expected_sha256": "2dddc9ff1c151a892083f4428fe8869f33b5adc4711ead1eb01ca93548122d50",
+      "expected_text": "Third member home",
+      "found": true,
+      "universe": 3
+    }
+  ],
+  "input_bytes": 37,
+  "input_file": "input.phext",
+  "input_sha256": "d4a1ff37caa9927a9cba22a929bcd13526e5cfe6ad65a3625b97d3606f766cb3",
+  "roundtrip": "byte-identical: serialize_chains(parse_chains(input)) == input"
+}
