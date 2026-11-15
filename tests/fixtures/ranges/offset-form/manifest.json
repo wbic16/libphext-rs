@@ -1,0 +1,22 @@
+{
+    "case": "offset-form",
+    "description": "The +offsetChars form: forward selection in Unicode scalars, across line boundaries, clipped at the scroll boundary; resolution failures recorded as resolved=false with empty fetch text.",
+    "input_file": "input.phext",
+    "input_bytes": 33,
+    "input_sha256": "29d97523534a26f1eb492fe14bb9ea19cf2b3146f55a6583e733c2ea37381159",
+    "op_count": 12,
+    "ops": [
+    {"index": 0, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@1,1+5", "canonical": "1.1.1/1.1.1/1.1.1@1,1+5", "expected_error": false},
+    {"index": 1, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,1+5", "resolved": true, "expected_file": "results/01.txt", "expected_bytes": 6, "expected_sha256": "3c48591d8d098a4538f5e013dfcf406e948eac4d3277b10bf614e295d6068179"},
+    {"index": 2, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,2+3", "resolved": true, "expected_file": "results/02.txt", "expected_bytes": 4, "expected_sha256": "861ca770cd074b2561884bd18d2a93fe11da252bbdcefdd6c9ba75b174a9b76c"},
+    {"index": 3, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,7+6", "resolved": true, "expected_file": "results/03.txt", "expected_bytes": 7, "expected_sha256": "f00c08f6e5371bf1e696562a91c33c24d35bbf1e3138ccca9d00ba432ce10c41"},
+    {"index": 4, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@2,1+5", "resolved": true, "expected_file": "results/04.txt", "expected_bytes": 5, "expected_sha256": "a116c9ed46d6207734a43317d30fd88f52ac8634c37d904bbf4e41d865f90475"},
+    {"index": 5, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@3,1+100", "resolved": true, "expected_file": "results/05.txt", "expected_bytes": 3, "expected_sha256": "361e48d0308f20e32dba5fb56328baf18d72ef0ccb43b84f5c262d2a6a1fc6c8"},
+    {"index": 6, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,1+0", "resolved": true, "expected_file": "results/06.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 7, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,12+2", "resolved": true, "expected_file": "results/07.txt", "expected_bytes": 2, "expected_sha256": "c6cbc6a0074e7e385c5959576ad9720ea3e74457a924b6fcc4003e6dd62205dd"},
+    {"index": 8, "kind": "fetch_point", "input": "$1:1.1.1/1.1.1/1.1.1@1,1+5", "resolved": true, "expected_file": "results/08.txt", "expected_bytes": 6, "expected_sha256": "3c48591d8d098a4538f5e013dfcf406e948eac4d3277b10bf614e295d6068179"},
+    {"index": 9, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,1", "resolved": true, "expected_file": "results/09.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 10, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@9,1+3", "resolved": false, "expected_file": "results/10.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 11, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.2@1,1+3", "resolved": false, "expected_file": "results/11.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+    ]
+  }

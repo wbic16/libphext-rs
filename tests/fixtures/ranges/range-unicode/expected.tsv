@@ -1,0 +1,11 @@
+case	range-unicode
+input_bytes	51
+input_sha256	19f37f4836a41aca3f0e00e0c2731da440b1a1aa473622ef40ee4fb6e45ebef3
+ops	7
+op	resolve_point	1.1.1/1.1.1/1.1.1@1,3	resolve=1|1.1.1/1.1.1/1.1.1|2	error=false
+op	resolve_point	1.1.1/1.1.1/1.1.1@2,6	resolve=1|1.1.1/1.1.1/1.1.1|12	error=false
+op	fetch_point	1.1.1/1.1.1/1.1.1@2,1+3	file=results/02.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.2@1,8+2	file=results/03.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,2-1.1.1/1.1.1/1.1.1@1,4	file=results/04.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@2,4-1.1.1/1.1.1/1.1.1@3,3	file=results/05.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@3,1-1.1.1/1.1.1/1.1.2@1,9	file=results/06.txt	resolved=true

@@ -1,0 +1,16 @@
+case	offset-form
+input_bytes	33
+input_sha256	29d97523534a26f1eb492fe14bb9ea19cf2b3146f55a6583e733c2ea37381159
+ops	12
+op	parse_point	1.1.1/1.1.1/1.1.1@1,1+5	canonical=1.1.1/1.1.1/1.1.1@1,1+5	error=false
+op	fetch_point	1.1.1/1.1.1/1.1.1@1,1+5	file=results/01.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@1,2+3	file=results/02.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@1,7+6	file=results/03.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@2,1+5	file=results/04.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@3,1+100	file=results/05.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@1,1+0	file=results/06.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@1,12+2	file=results/07.txt	resolved=true
+op	fetch_point	$1:1.1.1/1.1.1/1.1.1@1,1+5	file=results/08.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@1,1	file=results/09.txt	resolved=true
+op	fetch_point	1.1.1/1.1.1/1.1.1@9,1+3	file=results/10.txt	resolved=false
+op	fetch_point	1.1.1/1.1.1/1.1.2@1,1+3	file=results/11.txt	resolved=false

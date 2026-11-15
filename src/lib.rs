@@ -6,6 +6,7 @@ pub mod seal;
 mod test_lib;
 mod test_phokenize;
 mod test_chain;
+mod test_address;
 mod regressions;
 #[cfg(feature = "binary")]
 mod test_binary;

@@ -1,0 +1,17 @@
+{
+    "case": "range-unicode",
+    "description": "Unicode scalar counting end to end: emoji and CJK scrolls where byte offsets and scalar offsets differ; columns, offsets, and range boundaries all count scalars.",
+    "input_file": "input.phext",
+    "input_bytes": 51,
+    "input_sha256": "19f37f4836a41aca3f0e00e0c2731da440b1a1aa473622ef40ee4fb6e45ebef3",
+    "op_count": 7,
+    "ops": [
+    {"index": 0, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@1,3", "resolve": "1|1.1.1/1.1.1/1.1.1|2", "expected_error": false},
+    {"index": 1, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@2,6", "resolve": "1|1.1.1/1.1.1/1.1.1|12", "expected_error": false},
+    {"index": 2, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@2,1+3", "resolved": true, "expected_file": "results/02.txt", "expected_bytes": 9, "expected_sha256": "f5ad48a6d108e73ba93aa80366a106ea038edb1dbfd503de80208bc5d3887c82"},
+    {"index": 3, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.2@1,8+2", "resolved": true, "expected_file": "results/03.txt", "expected_bytes": 8, "expected_sha256": "9bbfb34258a51fc6a5c2e0aeececc76c84029a9b001a819c1026a4849a44d0a0"},
+    {"index": 4, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,2-1.1.1/1.1.1/1.1.1@1,4", "resolved": true, "expected_file": "results/04.txt", "expected_bytes": 5, "expected_sha256": "f4cfdf0d361e1dab7f3456091702288223100e0eb6a1d3306c6b2bada63121ef"},
+    {"index": 5, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@2,4-1.1.1/1.1.1/1.1.1@3,3", "resolved": true, "expected_file": "results/05.txt", "expected_bytes": 9, "expected_sha256": "c8a1723ba44bdda91ef945644dc1025f9cc38dae95b596e6b4395827b41071f6"},
+    {"index": 6, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@3,1-1.1.1/1.1.1/1.1.2@1,9", "resolved": true, "expected_file": "results/06.txt", "expected_bytes": 16, "expected_sha256": "3f14dac6cef5de825ccd259faa8189b688741c448aca9b1fa502f66f64d21183"}
+    ]
+  }

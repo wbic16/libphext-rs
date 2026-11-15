@@ -1,0 +1,7 @@
+case	input
+point-basics	point-basics/input.phext
+offset-form	offset-form/input.phext
+range-within-scroll	range-within-scroll/input.phext
+range-cross-scroll	range-cross-scroll/input.phext
+range-multiverse	range-multiverse/input.phext
+range-unicode	range-unicode/input.phext

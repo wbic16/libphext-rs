@@ -1532,3 +1532,295 @@ impl Chain {
         }
     }
 }
+
+// -----------------------------------------------------------------------------------------------------------
+// Line/column addressing (v0.6.1, Will 2026-11-15; range syntax ratified 2026-11-15 —
+// RANGE-SYNTAX-PROPOSAL.md in the ports program workspace).
+//
+// A point address is "[$N:]<9D coordinate>@<line>,<column>": the multiverse prefix and the
+// coordinate exactly as in parse_universe_address, plus a within-scroll caret position.
+// Line and column are 1-based; a position names a caret boundary (column 1 is the boundary
+// before the line's first character; a line of n characters has valid columns 1..n+1), and
+// columns count Unicode scalar values. A point may carry "+<offsetChars>": select forward
+// that many characters (scalars) from the point, counted within the scroll, terminating at
+// the scroll boundary.
+//
+// A range address is two point addresses joined by one hyphen: "<point>-<point>". The
+// endpoints may span scrolls and universes; an endpoint without "@" names its whole scroll
+// (as start: its first boundary; as end: its last). Canonical form: endpoints in ascending
+// (universe, coordinate, line, column) order — direction is discarded — "$1:" never written,
+// integers in minimal decimal form. Out-of-range endpoints fail at resolution, never clamp.
+// -----------------------------------------------------------------------------------------------------------
+
+/// @struct ScrollPosition
+///
+/// A caret boundary inside one scroll: 1-based line and column (see the section note above).
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+pub struct ScrollPosition {
+  pub line: usize,
+  pub column: usize
+}
+
+/// @struct PointAddress
+///
+/// One parsed point address: universe (1-based; 1 when the "$N:" prefix is absent), the 9D
+/// coordinate, an optional caret position, and an optional forward offset in characters.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct PointAddress {
+  pub universe: usize,
+  pub coordinate: Coordinate,
+  pub position: Option<ScrollPosition>,
+  pub offset: Option<usize>
+}
+impl std::fmt::Display for PointAddress {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    if self.universe > 1 { write!(f, "${}:", self.universe)?; }
+    write!(f, "{}", self.coordinate)?;
+    if let Some(pos) = self.position {
+      write!(f, "@{},{}", pos.line, pos.column)?;
+      if let Some(offset) = self.offset {
+        write!(f, "+{}", offset)?;
+      }
+    }
+    Ok(())
+  }
+}
+
+/// @struct RangeAddress
+///
+/// A parsed range: two point endpoints, normalized to ascending order at parse time.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct RangeAddress {
+  pub start: PointAddress,
+  pub end: PointAddress
+}
+impl std::fmt::Display for RangeAddress {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "{}-{}", self.start, self.end)
+  }
+}
+
+fn parse_address_uint(text: &str) -> Option<usize> {
+  if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) { return None; }
+  text.parse::<usize>().ok()
+}
+
+fn parse_address_coordinate(text: &str) -> Option<Coordinate> {
+  let arms: Vec<&str> = text.split('/').collect();
+  if arms.len() != 3 { return None; }
+  let mut values: Vec<usize> = Vec::new();
+  for arm in arms {
+    let parts: Vec<&str> = arm.split('.').collect();
+    if parts.len() != 3 { return None; }
+    for part in parts {
+      let value = parse_address_uint(part)?;
+      if value < 1 { return None; }
+      values.push(value);
+    }
+  }
+  let canonical = format!("{}.{}.{}/{}.{}.{}/{}.{}.{}",
+    values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8]);
+  Some(to_coordinate(&canonical))
+}
+
+/// ------------------------------------------------------------------------------------------------------
+/// @fn parse_point_address
+///
+/// parses a v0.6.1 point address: "[$N:]<coordinate>[@<line>,<column>[+<offsetChars>]]".
+/// Returns None on any malformed input: universe 0, a coordinate component below 1, a line or
+/// column below 1, a sign anywhere, or trailing structure. "$1:" is accepted on input; the
+/// canonical Display form never emits it.
+/// ------------------------------------------------------------------------------------------------------
+pub fn parse_point_address(address: &str) -> Option<PointAddress> {
+  let (universe, rest) = match address.strip_prefix('$') {
+    Some(stripped) => {
+      let (num, coord) = stripped.split_once(':')?;
+      let n = parse_address_uint(num)?;
+      if n < 1 { return None; }
+      (n, coord)
+    }
+    None => (1, address),
+  };
+  let (coord_part, pos_part) = match rest.split_once('@') {
+    Some((coord, pos)) => {
+      if pos.contains('@') { return None; }
+      (coord, Some(pos))
+    }
+    None => (rest, None),
+  };
+  let coordinate = parse_address_coordinate(coord_part)?;
+  let mut position = None;
+  let mut offset = None;
+  if let Some(pos) = pos_part {
+    let (line_part, col_part) = pos.split_once(',')?;
+    let line = parse_address_uint(line_part)?;
+    let (col_text, offset_value) = match col_part.split_once('+') {
+      Some((col, off)) => (col, Some(parse_address_uint(off)?)),
+      None => (col_part, None),
+    };
+    let column = parse_address_uint(col_text)?;
+    if line < 1 || column < 1 { return None; }
+    position = Some(ScrollPosition { line, column });
+    offset = offset_value;
+  }
+  Some(PointAddress { universe, coordinate, position, offset })
+}
+
+fn endpoint_position_key(point: &PointAddress, is_start: bool) -> (usize, usize) {
+  match point.position {
+    Some(pos) => (pos.line, pos.column),
+    None => if is_start { (1, 1) } else { (usize::MAX, usize::MAX) },
+  }
+}
+
+fn endpoint_cmp(a: &PointAddress, a_is_start: bool, b: &PointAddress, b_is_start: bool) -> std::cmp::Ordering {
+  use std::cmp::Ordering;
+  if a.universe != b.universe { return a.universe.cmp(&b.universe); }
+  let coord = a.coordinate.cmp(&b.coordinate);
+  if coord != Ordering::Equal { return coord; }
+  endpoint_position_key(a, a_is_start).cmp(&endpoint_position_key(b, b_is_start))
+}
+
+/// ------------------------------------------------------------------------------------------------------
+/// @fn parse_range_address
+///
+/// parses a v0.6.1 range address: exactly two point addresses joined by one hyphen. The
+/// endpoints are normalized to ascending order (direction is discarded, per the ratified
+/// spec). Range endpoints may not carry a "+offset" — the offset form never takes a second
+/// endpoint. Returns None on malformed input.
+/// ------------------------------------------------------------------------------------------------------
+pub fn parse_range_address(address: &str) -> Option<RangeAddress> {
+  let (first, second) = address.split_once('-')?;
+  if second.contains('-') { return None; }
+  let a = parse_point_address(first)?;
+  let b = parse_point_address(second)?;
+  if a.offset.is_some() || b.offset.is_some() { return None; }
+  if endpoint_cmp(&a, true, &b, false) == std::cmp::Ordering::Greater {
+    Some(RangeAddress { start: b, end: a })
+  } else {
+    Some(RangeAddress { start: a, end: b })
+  }
+}
+
+/// Resolves a caret position inside one scroll to a character (scalar) offset.
+/// None when the line or column is past the scroll's extent — never clamps.
+fn resolve_scroll_offset(text: &str, pos: ScrollPosition) -> Option<usize> {
+  if pos.line < 1 || pos.column < 1 { return None; }
+  let mut line = 1usize;
+  let mut column = 1usize;
+  let mut offset = 0usize;
+  for ch in text.chars() {
+    if line == pos.line && column == pos.column { return Some(offset); }
+    if ch == '\n' { line += 1; column = 1; } else { column += 1; }
+    offset += 1;
+  }
+  if line == pos.line && column == pos.column { Some(offset) } else { None }
+}
+
+/// The scroll text at a coordinate in one member phext, in the phokenize sense of presence:
+/// a coordinate is present exactly when phokenize enumerates it.
+fn addressed_scroll_text(member: &str, target: Coordinate) -> Option<String> {
+  phokenize(member).into_iter().find(|ps| ps.coord == target).map(|ps| ps.scroll)
+}
+
+impl Chain {
+  /// ------------------------------------------------------------------------------------------------------
+  /// @fn resolve_point
+  ///
+  /// resolves a point address against this chain: (universe, coordinate, character offset
+  /// within the scroll). A point without "@" resolves to offset 0 of its scroll. None when
+  /// the universe or scroll is absent or the position is out of range — never clamps.
+  /// ------------------------------------------------------------------------------------------------------
+  pub fn resolve_point(&self, point: &PointAddress) -> Option<(usize, Coordinate, usize)> {
+    if point.universe < 1 || point.universe > self.members.len() { return None; }
+    let text = addressed_scroll_text(&self.members[point.universe - 1], point.coordinate)?;
+    let offset = match point.position {
+      None => 0,
+      Some(pos) => resolve_scroll_offset(&text, pos)?,
+    };
+    Some((point.universe, point.coordinate, offset))
+  }
+
+  /// ------------------------------------------------------------------------------------------------------
+  /// @fn fetch_point
+  ///
+  /// fetches a point address string. A bare point is a caret: it fetches the empty string.
+  /// The offset form fetches the selected characters: from the point, forward `offset`
+  /// characters (scalars) within the scroll, terminating at the scroll boundary. Any parse
+  /// or resolution failure fetches the empty string, as Chain::fetch does.
+  /// ------------------------------------------------------------------------------------------------------
+  pub fn fetch_point(&self, address: &str) -> String {
+    let point = match parse_point_address(address) { Some(p) => p, None => return String::new() };
+    let count = match point.offset { Some(n) => n, None => return String::new() };
+    let (_, _, offset) = match self.resolve_point(&point) { Some(v) => v, None => return String::new() };
+    let text = addressed_scroll_text(&self.members[point.universe - 1], point.coordinate).unwrap_or_default();
+    text.chars().skip(offset).take(count).collect()
+  }
+
+  /// ------------------------------------------------------------------------------------------------------
+  /// @fn resolve_range
+  ///
+  /// resolves a range against this chain into per-scroll segments: (universe, coordinate,
+  /// segment text) in ascending order. Middle scrolls contribute their whole text; the
+  /// endpoint scrolls contribute from/to their endpoint boundaries (an endpoint without
+  /// "@" contributes its whole scroll). None when either endpoint fails to resolve —
+  /// an out-of-range endpoint is an error, never a clamp.
+  /// ------------------------------------------------------------------------------------------------------
+  pub fn resolve_range(&self, range: &RangeAddress) -> Option<Vec<(usize, Coordinate, String)>> {
+    let start = &range.start;
+    let end = &range.end;
+    if start.universe < 1 || end.universe > self.members.len() || start.universe > end.universe { return None; }
+    // both endpoint scrolls must be present, and both endpoint positions must resolve
+    self.resolve_point(&PointAddress { universe: start.universe, coordinate: start.coordinate, position: start.position, offset: None })?;
+    self.resolve_point(&PointAddress { universe: end.universe, coordinate: end.coordinate, position: end.position, offset: None })?;
+    let mut segments: Vec<(usize, Coordinate, String)> = Vec::new();
+    for universe in start.universe..=end.universe {
+      let member = &self.members[universe - 1];
+      let mut scrolls = phokenize(member);
+      scrolls.sort_by(|a, b| a.coord.cmp(&b.coord));
+      for ps in &scrolls {
+        let coord = ps.coord;
+        if universe == start.universe && coord < start.coordinate { continue; }
+        if universe == end.universe && coord > end.coordinate { continue; }
+        let chars: Vec<char> = ps.scroll.chars().collect();
+        let mut lo = 0usize;
+        let mut hi = chars.len();
+        if universe == start.universe && coord == start.coordinate {
+          lo = match start.position { None => 0, Some(pos) => resolve_scroll_offset(&ps.scroll, pos)? };
+        }
+        if universe == end.universe && coord == end.coordinate {
+          hi = match end.position { None => chars.len(), Some(pos) => resolve_scroll_offset(&ps.scroll, pos)? };
+        }
+        if lo > hi { return None; }
+        segments.push((universe, coord, chars[lo..hi].iter().collect()));
+      }
+    }
+    Some(segments)
+  }
+
+  /// ------------------------------------------------------------------------------------------------------
+  /// @fn fetch_range
+  ///
+  /// fetches a range address string: the spanned text with phext structure bytes preserved —
+  /// the covered segments re-assembled at their coordinates into a phext (chain) fragment
+  /// (scroll breaks between covered scrolls inside a universe, CHAIN_BREAK between
+  /// universes, never a trailing CHAIN_CLOSE: a fragment is an excerpt, not a terminated
+  /// chain), so the result round-trips as a phext fragment. Empty segments contribute
+  /// nothing. Any parse or resolution failure fetches the empty string, as Chain::fetch does.
+  /// ------------------------------------------------------------------------------------------------------
+  pub fn fetch_range(&self, address: &str) -> String {
+    let range = match parse_range_address(address) { Some(r) => r, None => return String::new() };
+    let segments = match self.resolve_range(&range) { Some(s) => s, None => return String::new() };
+    let mut members: Vec<String> = Vec::new();
+    for universe in range.start.universe..=range.end.universe {
+      let mut member = String::new();
+      for (_seg_universe, coord, text) in segments.iter().filter(|(u, _, _)| *u == universe) {
+        if !text.is_empty() {
+          member = insert(member, *coord, text);
+        }
+      }
+      members.push(member);
+    }
+    Chain { members, closed: false }.serialize()
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "format": "libphext-0.6.1-range-fixtures/1",
+  "reference": "libphext-rs 0.6.1",
+  "generated_by": "gen-ranges harness calling the libphext-rs v0.6.1 API (parse_point_address / parse_range_address / Chain::resolve_point / Chain::resolve_range / Chain::fetch_point / Chain::fetch_range) on aletheia-core, 2026-11-15",
+  "case_count": 6,
+  "op_count": 69,
+  "cases": [
+  {
+    "case": "point-basics",
+    "description": "Point parsing and canonical form ($1: dropped, leading zeros by value, bare coordinate), parse rejections, and point resolution offsets incl. line/column edge boundaries.",
+    "input_file": "input.phext",
+    "input_bytes": 72,
+    "input_sha256": "772695e71f0a6a8d4e2a42244ab66b4224c9d276fd47449cc1220dcb4e3e8db2",
+    "op_count": 24,
+    "ops": [
+    {"index": 0, "kind": "parse_point", "input": "$3:1.1.1/1.1.1/1.1.1@24,5", "canonical": "$3:1.1.1/1.1.1/1.1.1@24,5", "expected_error": false},
+    {"index": 1, "kind": "parse_point", "input": "$1:1.1.1/1.1.1/1.1.1@24,5", "canonical": "1.1.1/1.1.1/1.1.1@24,5", "expected_error": false},
+    {"index": 2, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@024,005", "canonical": "1.1.1/1.1.1/1.1.1@24,5", "expected_error": false},
+    {"index": 3, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.2", "canonical": "1.1.1/1.1.1/1.1.2", "expected_error": false},
+    {"index": 4, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@24,5+10", "canonical": "1.1.1/1.1.1/1.1.1@24,5+10", "expected_error": false},
+    {"index": 5, "kind": "parse_point", "input": "$0:1.1.1/1.1.1/1.1.1@1,1", "canonical": null, "expected_error": true},
+    {"index": 6, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@0,5", "canonical": null, "expected_error": true},
+    {"index": 7, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@24,0", "canonical": null, "expected_error": true},
+    {"index": 8, "kind": "parse_point", "input": "1.1.1/1.1.1/0.1.1@1,1", "canonical": null, "expected_error": true},
+    {"index": 9, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@24", "canonical": null, "expected_error": true},
+    {"index": 10, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@24,5+", "canonical": null, "expected_error": true},
+    {"index": 11, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@24,+5", "canonical": null, "expected_error": true},
+    {"index": 12, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@24,5@1,1", "canonical": null, "expected_error": true},
+    {"index": 13, "kind": "parse_point", "input": "1.1.1/1.1.1@1,1", "canonical": null, "expected_error": true},
+    {"index": 14, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@1,1", "resolve": "1|1.1.1/1.1.1/1.1.1|0", "expected_error": false},
+    {"index": 15, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@1,12", "resolve": "1|1.1.1/1.1.1/1.1.1|11", "expected_error": false},
+    {"index": 16, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@2,3", "resolve": "1|1.1.1/1.1.1/1.1.1|14", "expected_error": false},
+    {"index": 17, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@3,13", "resolve": "1|1.1.1/1.1.1/1.1.1|38", "expected_error": false},
+    {"index": 18, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@1,13", "resolve": null, "expected_error": true},
+    {"index": 19, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@4,1", "resolve": null, "expected_error": true},
+    {"index": 20, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.2@2,1", "resolve": "1|1.1.1/1.1.1/1.1.2|14", "expected_error": false},
+    {"index": 21, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.2@3,10", "resolve": "1|1.1.1/1.1.1/1.1.2|32", "expected_error": false},
+    {"index": 22, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.9@1,1", "resolve": null, "expected_error": true},
+    {"index": 23, "kind": "resolve_point", "input": "$2:1.1.1/1.1.1/1.1.1@1,1", "resolve": null, "expected_error": true}
+    ]
+  },
+  {
+    "case": "offset-form",
+    "description": "The +offsetChars form: forward selection in Unicode scalars, across line boundaries, clipped at the scroll boundary; resolution failures recorded as resolved=false with empty fetch text.",
+    "input_file": "input.phext",
+    "input_bytes": 33,
+    "input_sha256": "29d97523534a26f1eb492fe14bb9ea19cf2b3146f55a6583e733c2ea37381159",
+    "op_count": 12,
+    "ops": [
+    {"index": 0, "kind": "parse_point", "input": "1.1.1/1.1.1/1.1.1@1,1+5", "canonical": "1.1.1/1.1.1/1.1.1@1,1+5", "expected_error": false},
+    {"index": 1, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,1+5", "resolved": true, "expected_file": "results/01.txt", "expected_bytes": 6, "expected_sha256": "3c48591d8d098a4538f5e013dfcf406e948eac4d3277b10bf614e295d6068179"},
+    {"index": 2, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,2+3", "resolved": true, "expected_file": "results/02.txt", "expected_bytes": 4, "expected_sha256": "861ca770cd074b2561884bd18d2a93fe11da252bbdcefdd6c9ba75b174a9b76c"},
+    {"index": 3, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,7+6", "resolved": true, "expected_file": "results/03.txt", "expected_bytes": 7, "expected_sha256": "f00c08f6e5371bf1e696562a91c33c24d35bbf1e3138ccca9d00ba432ce10c41"},
+    {"index": 4, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@2,1+5", "resolved": true, "expected_file": "results/04.txt", "expected_bytes": 5, "expected_sha256": "a116c9ed46d6207734a43317d30fd88f52ac8634c37d904bbf4e41d865f90475"},
+    {"index": 5, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@3,1+100", "resolved": true, "expected_file": "results/05.txt", "expected_bytes": 3, "expected_sha256": "361e48d0308f20e32dba5fb56328baf18d72ef0ccb43b84f5c262d2a6a1fc6c8"},
+    {"index": 6, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,1+0", "resolved": true, "expected_file": "results/06.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 7, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,12+2", "resolved": true, "expected_file": "results/07.txt", "expected_bytes": 2, "expected_sha256": "c6cbc6a0074e7e385c5959576ad9720ea3e74457a924b6fcc4003e6dd62205dd"},
+    {"index": 8, "kind": "fetch_point", "input": "$1:1.1.1/1.1.1/1.1.1@1,1+5", "resolved": true, "expected_file": "results/08.txt", "expected_bytes": 6, "expected_sha256": "3c48591d8d098a4538f5e013dfcf406e948eac4d3277b10bf614e295d6068179"},
+    {"index": 9, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@1,1", "resolved": true, "expected_file": "results/09.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 10, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@9,1+3", "resolved": false, "expected_file": "results/10.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 11, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.2@1,1+3", "resolved": false, "expected_file": "results/11.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+    ]
+  },
+  {
+    "case": "range-within-scroll",
+    "description": "Ranges inside one scroll: the worked examples (span, whole line, empty caret), reversed input fetching the same extent, canonical normalization, and out-of-range endpoints as resolution errors.",
+    "input_file": "input.phext",
+    "input_bytes": 49,
+    "input_sha256": "fc322f1a9c7eaabdd675e59f77e1fd42c2587a13d9e0f950bdf7224c354ba314",
+    "op_count": 12,
+    "ops": [
+    {"index": 0, "kind": "parse_range", "input": "1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9", "canonical": "1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9", "expected_error": false},
+    {"index": 1, "kind": "parse_range", "input": "1.1.1/1.1.1/1.1.1@24,9-1.1.1/1.1.1/1.1.1@24,5", "canonical": "1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9", "expected_error": false},
+    {"index": 2, "kind": "parse_range", "input": "1.1.1/1.1.1/1.1.1@024,005-1.1.1/1.1.1/1.1.1@24,9", "canonical": "1.1.1/1.1.1/1.1.1@24,5-1.1.1/1.1.1/1.1.1@24,9", "expected_error": false},
+    {"index": 3, "kind": "parse_range", "input": "1.1.1/1.1.1/1.1.1@1,1+3-1.1.1/1.1.1/1.1.1@1,5", "canonical": null, "expected_error": true},
+    {"index": 4, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@1,6", "resolved": true, "expected_file": "results/04.txt", "expected_bytes": 5, "expected_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8"},
+    {"index": 5, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,5-1.1.1/1.1.1/1.1.1@1,9", "resolved": true, "expected_file": "results/05.txt", "expected_bytes": 4, "expected_sha256": "2c95111576eb601f130016b8a471a59954a4c6129d221673e3e9c83c3aa0007f"},
+    {"index": 6, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@2,1-1.1.1/1.1.1/1.1.1@3,1", "resolved": true, "expected_file": "results/06.txt", "expected_bytes": 14, "expected_sha256": "51d534b2dbcd6ddd282f175d9cc2006a47c1c062c11287723bad9a151c5f6b6c"},
+    {"index": 7, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@4,11", "resolved": true, "expected_file": "results/07.txt", "expected_bytes": 49, "expected_sha256": "fc322f1a9c7eaabdd675e59f77e1fd42c2587a13d9e0f950bdf7224c354ba314"},
+    {"index": 8, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@2,4-1.1.1/1.1.1/1.1.1@2,4", "resolved": true, "expected_file": "results/08.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 9, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,6-1.1.1/1.1.1/1.1.1@1,1", "resolved": true, "expected_file": "results/09.txt", "expected_bytes": 5, "expected_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8"},
+    {"index": 10, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@5,1", "resolved": false, "expected_file": "results/10.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 11, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.1@1,13", "resolved": false, "expected_file": "results/11.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+    ]
+  },
+  {
+    "case": "range-cross-scroll",
+    "description": "Ranges across scrolls of one universe: partial+partial segments with structure bytes preserved, whole-scroll (@-less) endpoints, mixed granularity, a cross-section range, and a missing endpoint scroll.",
+    "input_file": "input.phext",
+    "input_bytes": 72,
+    "input_sha256": "951322411329be76391827684008448760fdb58ec1f2517748d8f96615595f8e",
+    "op_count": 6,
+    "ops": [
+    {"index": 0, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@3,2-1.1.1/1.1.1/1.1.2@1,7", "resolved": true, "expected_file": "results/00.txt", "expected_bytes": 10, "expected_sha256": "95e8abe165ddde2b7577d43b4eb48f36f9fb1c7dc1f2f22db54e3d0ca2401de0"},
+    {"index": 1, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1-1.1.1/1.1.1/1.1.2", "resolved": true, "expected_file": "results/01.txt", "expected_bytes": 53, "expected_sha256": "0db39ad63b247dfed26829e34dd77a2aedcae20567c58a4da0977cd3d0b8a24b"},
+    {"index": 2, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1-1.1.1/1.1.1/1.1.2@1,7", "resolved": true, "expected_file": "results/02.txt", "expected_bytes": 37, "expected_sha256": "810658f28ecf678627d42449e95641f5f56454ffa780a34e44743881566280c4"},
+    {"index": 3, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.2@2,1-1.1.1/1.1.2/1.1.1@1,8", "resolved": true, "expected_file": "results/03.txt", "expected_bytes": 17, "expected_sha256": "3f83a819d803a86fab7f10d47150fc52eee21bf4a051436d9c9be848baa0f43e"},
+    {"index": 4, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.2/1.1.1", "resolved": true, "expected_file": "results/04.txt", "expected_bytes": 72, "expected_sha256": "951322411329be76391827684008448760fdb58ec1f2517748d8f96615595f8e"},
+    {"index": 5, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.9@1,1", "resolved": false, "expected_file": "results/05.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+    ]
+  },
+  {
+    "case": "range-multiverse",
+    "description": "Ranges across universes of a closed 3-member chain: the multiversal worked example, a range inside universe 2, whole-universe @-less endpoints, canonical $1: handling, and errors (universe past the chain end, missing scroll).",
+    "input_file": "input.phext",
+    "input_bytes": 89,
+    "input_sha256": "03e6231076f7d0e386fc15db689779a21393af22816bff3e9fdd6de66e480818",
+    "op_count": 8,
+    "ops": [
+    {"index": 0, "kind": "parse_range", "input": "$1:1.1.1/1.1.1/1.1.1@1,1-$3:1.1.1/1.1.1/1.1.1@1,1", "canonical": "1.1.1/1.1.1/1.1.1@1,1-$3:1.1.1/1.1.1/1.1.1@1,1", "expected_error": false},
+    {"index": 1, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@3,2-$3:1.1.1/1.1.1/1.1.1@2,1", "resolved": true, "expected_file": "results/01.txt", "expected_bytes": 57, "expected_sha256": "9807bd2613286c8eb51dc30ba5bf6b32c6754bddcc6241cf662e476c9a9cd038"},
+    {"index": 2, "kind": "fetch_range", "input": "$2:1.1.1/1.1.1/1.1.1@2,1-$2:1.1.1/1.1.1/1.1.1@2,7", "resolved": true, "expected_file": "results/02.txt", "expected_bytes": 6, "expected_sha256": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4"},
+    {"index": 3, "kind": "fetch_range", "input": "$2:1.1.1/1.1.1/1.1.1-$3:1.1.1/1.1.1/1.1.1", "resolved": true, "expected_file": "results/03.txt", "expected_bytes": 57, "expected_sha256": "f09f456450f9f401a77f734b7b8812a7309b39f3c81a6e01e5f1264098fd7c66"},
+    {"index": 4, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-$4:1.1.1/1.1.1/1.1.1@1,1", "resolved": false, "expected_file": "results/04.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 5, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,1-$2:1.1.1/1.1.1/1.1.9@1,1", "resolved": false, "expected_file": "results/05.txt", "expected_bytes": 0, "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"index": 6, "kind": "fetch_point", "input": "$2:1.1.1/1.1.1/1.1.2@1,1+4", "resolved": true, "expected_file": "results/06.txt", "expected_bytes": 4, "expected_sha256": "53365e8acfac44ddbaadfdef1ef8778e99662e481bf9fb41751404947f50665d"},
+    {"index": 7, "kind": "resolve_point", "input": "$3:1.1.1/1.1.1/1.1.1@2,1", "resolve": "3|1.1.1/1.1.1/1.1.1|15", "expected_error": false}
+    ]
+  },
+  {
+    "case": "range-unicode",
+    "description": "Unicode scalar counting end to end: emoji and CJK scrolls where byte offsets and scalar offsets differ; columns, offsets, and range boundaries all count scalars.",
+    "input_file": "input.phext",
+    "input_bytes": 51,
+    "input_sha256": "19f37f4836a41aca3f0e00e0c2731da440b1a1aa473622ef40ee4fb6e45ebef3",
+    "op_count": 7,
+    "ops": [
+    {"index": 0, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@1,3", "resolve": "1|1.1.1/1.1.1/1.1.1|2", "expected_error": false},
+    {"index": 1, "kind": "resolve_point", "input": "1.1.1/1.1.1/1.1.1@2,6", "resolve": "1|1.1.1/1.1.1/1.1.1|12", "expected_error": false},
+    {"index": 2, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.1@2,1+3", "resolved": true, "expected_file": "results/02.txt", "expected_bytes": 9, "expected_sha256": "f5ad48a6d108e73ba93aa80366a106ea038edb1dbfd503de80208bc5d3887c82"},
+    {"index": 3, "kind": "fetch_point", "input": "1.1.1/1.1.1/1.1.2@1,8+2", "resolved": true, "expected_file": "results/03.txt", "expected_bytes": 8, "expected_sha256": "9bbfb34258a51fc6a5c2e0aeececc76c84029a9b001a819c1026a4849a44d0a0"},
+    {"index": 4, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@1,2-1.1.1/1.1.1/1.1.1@1,4", "resolved": true, "expected_file": "results/04.txt", "expected_bytes": 5, "expected_sha256": "f4cfdf0d361e1dab7f3456091702288223100e0eb6a1d3306c6b2bada63121ef"},
+    {"index": 5, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@2,4-1.1.1/1.1.1/1.1.1@3,3", "resolved": true, "expected_file": "results/05.txt", "expected_bytes": 9, "expected_sha256": "c8a1723ba44bdda91ef945644dc1025f9cc38dae95b596e6b4395827b41071f6"},
+    {"index": 6, "kind": "fetch_range", "input": "1.1.1/1.1.1/1.1.1@3,1-1.1.1/1.1.1/1.1.2@1,9", "resolved": true, "expected_file": "results/06.txt", "expected_bytes": 16, "expected_sha256": "3f14dac6cef5de825ccd259faa8189b688741c448aca9b1fa502f66f64d21183"}
+    ]
+  }
+  ]
+}

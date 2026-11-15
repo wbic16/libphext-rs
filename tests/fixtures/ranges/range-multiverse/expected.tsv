@@ -1,0 +1,12 @@
+case	range-multiverse
+input_bytes	89
+input_sha256	03e6231076f7d0e386fc15db689779a21393af22816bff3e9fdd6de66e480818
+ops	8
+op	parse_range	$1:1.1.1/1.1.1/1.1.1@1,1-$3:1.1.1/1.1.1/1.1.1@1,1	canonical=1.1.1/1.1.1/1.1.1@1,1-$3:1.1.1/1.1.1/1.1.1@1,1	error=false
+op	fetch_range	1.1.1/1.1.1/1.1.1@3,2-$3:1.1.1/1.1.1/1.1.1@2,1	file=results/01.txt	resolved=true
+op	fetch_range	$2:1.1.1/1.1.1/1.1.1@2,1-$2:1.1.1/1.1.1/1.1.1@2,7	file=results/02.txt	resolved=true
+op	fetch_range	$2:1.1.1/1.1.1/1.1.1-$3:1.1.1/1.1.1/1.1.1	file=results/03.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-$4:1.1.1/1.1.1/1.1.1@1,1	file=results/04.txt	resolved=false
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-$2:1.1.1/1.1.1/1.1.9@1,1	file=results/05.txt	resolved=false
+op	fetch_point	$2:1.1.1/1.1.1/1.1.2@1,1+4	file=results/06.txt	resolved=true
+op	resolve_point	$3:1.1.1/1.1.1/1.1.1@2,1	resolve=3|1.1.1/1.1.1/1.1.1|15	error=false

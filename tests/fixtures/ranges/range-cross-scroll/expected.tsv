@@ -1,0 +1,10 @@
+case	range-cross-scroll
+input_bytes	72
+input_sha256	951322411329be76391827684008448760fdb58ec1f2517748d8f96615595f8e
+ops	6
+op	fetch_range	1.1.1/1.1.1/1.1.1@3,2-1.1.1/1.1.1/1.1.2@1,7	file=results/00.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1-1.1.1/1.1.1/1.1.2	file=results/01.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1-1.1.1/1.1.1/1.1.2@1,7	file=results/02.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.2@2,1-1.1.1/1.1.2/1.1.1@1,8	file=results/03.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.2/1.1.1	file=results/04.txt	resolved=true
+op	fetch_range	1.1.1/1.1.1/1.1.1@1,1-1.1.1/1.1.1/1.1.9@1,1	file=results/05.txt	resolved=false
