@@ -1,0 +1,11 @@
+case	input_file
+single-member	single-member/input.phext
+multi-member-3	multi-member-3/input.phext
+unclosed-at-eof	unclosed-at-eof/input.phext
+adjacent-chain-closes	adjacent-chain-closes/input.phext
+empty-member	empty-member/input.phext
+chain-of-one-empty-phext	chain-of-one-empty-phext/input.phext
+empty-stream	empty-stream/input.phext
+multiple-chains	multiple-chains/input.phext
+real-corpora-chain	real-corpora-chain/input.phext
+multiverse-addressing	multiverse-addressing/input.phext

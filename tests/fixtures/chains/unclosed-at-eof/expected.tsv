@@ -1,0 +1,10 @@
+case	unclosed-at-eof
+input_bytes	30
+input_sha256	daf1da191092c92e9a8bf596d81719ee675e24a0731c9224379c392dd9aa5c66
+chains	1
+chain	0	closed=false	members=2
+member	0	0	bytes=14	sha256=37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866	scrolls=1
+member	0	1	bytes=15	sha256=9455612ea8d17fa6560fad916593c4d0ab3c042680418b109773866dd168e398	scrolls=1
+fetch	chain=0	address=1.1.1/1.1.1/1.1.1	found=true	file=fetches/00.txt	bytes=14	sha256=37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866
+fetch	chain=0	address=$1:1.1.1/1.1.1/1.1.1	found=true	file=fetches/01.txt	bytes=14	sha256=37110ed80002bd5c122de1f4b4deffeb09b083b7e6a177a1c67033e51bf51866
+fetch	chain=0	address=$2:1.1.1/1.1.1/1.1.1	found=true	file=fetches/02.txt	bytes=15	sha256=9455612ea8d17fa6560fad916593c4d0ab3c042680418b109773866dd168e398

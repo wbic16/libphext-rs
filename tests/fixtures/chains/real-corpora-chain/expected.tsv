@@ -1,0 +1,12 @@
+case	real-corpora-chain
+input_bytes	9405538
+input_sha256	fa8e2fb83db1746efd0027f6fbec1233ac6eec2ef120b3d89c6ce73d4e32cc15
+chains	1
+chain	0	closed=true	members=2
+member	0	0	bytes=4602370	sha256=506d850d4b27d1ad4dd8277133425b1b46d6be889ecc9daeeb49469d0c766511	scrolls=830
+member	0	1	bytes=4803166	sha256=12efb101515fdb57085ca5eff0802e724518f07d83cdda7e1506c7db29a6be96	scrolls=9718
+fetch	chain=0	address=1.1.1/1.1.1/1.1.1	found=true	file=fetches/00.txt	bytes=6956	sha256=41633ff9a1e69d530c354a3f83d2c5b4148adfe6f459cf236289900a44b12b99
+fetch	chain=0	address=$1:1.1.1/1.1.1/1.1.1	found=true	file=fetches/01.txt	bytes=6956	sha256=41633ff9a1e69d530c354a3f83d2c5b4148adfe6f459cf236289900a44b12b99
+fetch	chain=0	address=$2:1.1.1/1.1.1/1.1.1	found=true	file=fetches/02.txt	bytes=3046	sha256=c1868d7432f39f036b04b01e2d8b196fca0c9ce24e3f267eff78e2c8a4339cf8
+fetch	chain=0	address=$1:8.1.1/1.1.1/1.1.1	found=true	file=fetches/03.txt	bytes=1	sha256=01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+fetch	chain=0	address=$2:24.7.11/11.7.14/7.6.8	found=true	file=fetches/04.txt	bytes=1	sha256=ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb

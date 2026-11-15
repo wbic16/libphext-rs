@@ -1,0 +1,54 @@
+{
+  "case": "empty-stream",
+  "chains": [
+    {
+      "chain_index": 0,
+      "closed": false,
+      "members": [
+        {
+          "bytes": 0,
+          "member_index": 0,
+          "scroll_count": 1,
+          "scrolls": [
+            {
+              "b": 0,
+              "c": "1.1.1/1.1.1/1.1.1",
+              "s": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "universe": 1
+        }
+      ]
+    }
+  ],
+  "description": "Input is zero bytes: one unclosed chain holding one empty phext.",
+  "fetches": [
+    {
+      "address": "1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 0,
+      "expected_file": "fetches/00.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": true,
+      "universe": 1
+    },
+    {
+      "address": "$1:1.1.1/1.1.1/1.1.1",
+      "chain_index": 0,
+      "coordinate": "1.1.1/1.1.1/1.1.1",
+      "expected_bytes": 0,
+      "expected_file": "fetches/01.txt",
+      "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_text": "",
+      "found": true,
+      "universe": 1
+    }
+  ],
+  "input_bytes": 0,
+  "input_file": "input.phext",
+  "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "roundtrip": "byte-identical: serialize_chains(parse_chains(input)) == input"
+}
