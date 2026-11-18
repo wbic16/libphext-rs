@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::phext::{self, to_coordinate, SCROLL_BREAK, VOLUME_BREAK};
+    use crate::phext::{self, to_coordinate, LIBRARY_BREAK, SCROLL_BREAK, VOLUME_BREAK};
     use std::collections::HashMap;
 
     fn c(s: &str) -> phext::Coordinate {
@@ -60,6 +60,55 @@ mod tests {
         let out_of_order = [entries[1], entries[0]];
         assert!(phext::append_batch(String::new(), &out_of_order).is_none());
         assert!(phext::append_batch(doc, &[(c("1.1.1/1.1.1/1.1.2"), "late")]).is_none());
+    }
+
+    #[test]
+    fn append_past_a_library_break_uses_the_last_library() {
+        // the last scroll lives in the second library: coordinates in the
+        // first library sort before the document's end, however large
+        let mut doc = "a".to_string();
+        doc.push(LIBRARY_BREAK);
+        doc.push_str("b");
+        assert_eq!(phext::fetch(&doc, c("2.1.1/1.1.1/1.1.1")), "b");
+        assert!(phext::append(doc.clone(), c("1.9.9/9.9.9/9.9.9"), "x").is_none(), "earlier library");
+        assert!(phext::append(doc.clone(), c("2.1.1/1.1.1/1.1.1"), "x").is_none(), "occupied");
+        let doc = phext::append(doc, c("2.1.1/1.1.1/1.1.2"), "c").unwrap();
+        assert_eq!(phext::fetch(&doc, c("2.1.1/1.1.1/1.1.2")), "c");
+        assert_eq!(phext::explode(&doc).len(), 3);
+    }
+
+    #[test]
+    fn append_after_section_breaks_compares_the_whole_coordinate() {
+        let doc = phext::append(String::new(), c("1.1.1/1.1.1/1.1.1"), "a").unwrap();
+        let doc = phext::append(doc, c("1.1.1/1.1.1/1.3.7"), "deep").unwrap();
+        // a higher scroll in an earlier section still sorts before the end
+        assert!(phext::append(doc.clone(), c("1.1.1/1.1.1/1.2.9"), "x").is_none(), "earlier section");
+        assert!(phext::append(doc.clone(), c("1.1.1/1.1.1/1.3.7"), "x").is_none(), "occupied");
+        let doc = phext::append(doc, c("1.1.1/1.1.1/1.3.8"), "next").unwrap();
+        assert_eq!(phext::fetch(&doc, c("1.1.1/1.1.1/1.3.8")), "next");
+    }
+
+    #[test]
+    fn append_to_a_large_document_lands_at_the_end() {
+        // 5,000 scrolls in one batch, then single appends at the end: the
+        // suffix scan must find the same end the tokenizer would
+        let coords: Vec<String> = (1..=5000).map(|i| format!("1.1.1/1.1.1/1.1.{}", i)).collect();
+        let entries: Vec<(phext::Coordinate, &str)> =
+            coords.iter().map(|s| (c(s), "x")).collect();
+        let doc = phext::append_batch(String::new(), &entries).unwrap();
+        assert!(phext::append(doc.clone(), c("1.1.1/1.1.1/1.1.5000"), "x").is_none(), "occupied");
+        let doc = phext::append_checked(doc, c("1.1.1/1.1.1/1.1.5001"), "tail").unwrap();
+        assert_eq!(phext::fetch_checked(&doc, c("1.1.1/1.1.1/1.1.5001")).unwrap(), "tail");
+        assert_eq!(phext::explode(&doc).len(), 5001);
+    }
+
+    #[test]
+    fn append_keeps_newlines_unicode_and_marker_shaped_content() {
+        let doc = phext::append(String::new(), c("1.1.1/1.1.1/1.1.1"), "one\ntwo").unwrap();
+        let payload = "héllo ⛄\nphext-check:xxh3-128:00000000000000000000000000000000";
+        let doc = phext::append_checked(doc, c("1.1.1/1.1.1/1.1.2"), payload).unwrap();
+        assert_eq!(phext::fetch_checked(&doc, c("1.1.1/1.1.1/1.1.2")).unwrap(), payload);
+        assert_eq!(phext::fetch(&doc, c("1.1.1/1.1.1/1.1.1")), "one\ntwo");
     }
 
     // ---- checked scrolls ---------------------------------------------------
