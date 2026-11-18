@@ -1917,6 +1917,124 @@ pub fn fetch_checked(input: &str, target: Coordinate) -> Option<String> {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @fn break_dimension
+///
+/// the dimension index of a dimension-break byte, lowest (scroll) first:
+/// scroll 0, section 1, chapter 2, book 3, volume 4, collection 5,
+/// series 6, shelf 7, library 8. None for any other byte.
+/// ----------------------------------------------------------------------------------------------------------
+fn break_dimension(byte: u8) -> Option<usize> {
+  match byte {
+    SCROLL_BREAK_U8 => Some(0),
+    SECTION_BREAK_U8 => Some(1),
+    CHAPTER_BREAK_U8 => Some(2),
+    BOOK_BREAK_U8 => Some(3),
+    VOLUME_BREAK_U8 => Some(4),
+    COLLECTION_BREAK_U8 => Some(5),
+    SERIES_BREAK_U8 => Some(6),
+    SHELF_BREAK_U8 => Some(7),
+    LIBRARY_BREAK_U8 => Some(8),
+    _ => None,
+  }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn break_candidates
+///
+/// SWAR scan of one 8-byte lane: a bitmask whose bit i is set when byte i
+/// of the lane is below 0x20. Every dimension break is below 0x20, so a
+/// lane with an empty mask holds no breaks and can be skipped whole. The
+/// subtraction can borrow across lanes and flag a byte spuriously, but a
+/// byte below 0x20 always flags its own lane — flagged bytes are checked
+/// against the real break table, so a spurious flag costs a lookup,
+/// never a missed break. (The bit-packing multiply is exact for all 256
+/// combinations of lane flags.)
+/// ----------------------------------------------------------------------------------------------------------
+fn break_candidates(chunk: u64) -> u64 {
+  let flagged = chunk.wrapping_sub(0x2020_2020_2020_2020) & !chunk & 0x8080_8080_8080_8080;
+  ((flagged >> 7) & 0x0101_0101_0101_0101).wrapping_mul(0x0102_0408_1020_4080) >> 56
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn last_scroll_coordinate
+///
+/// the coordinate of the last non-empty scroll in `bytes` (a document
+/// prefix with no trailing delimiter bytes: the last byte is content).
+///
+/// A scroll's coordinate is the fold of every dimension break before it,
+/// and a break increments its own dimension while resetting every lower
+/// dimension to 1 — so, read backwards, each component is 1 plus the
+/// count of its own breaks after the last higher break. This scan walks
+/// the bytes backwards with O(1) state and stops as soon as every
+/// component is settled: a library break settles all lower dimensions at
+/// once, leaving only a plain count of library breaks over the head.
+/// The scan works 64 bytes at a time: `break_candidates` flags the bytes
+/// that could be breaks with a few word-wide operations, and only flagged
+/// bytes are visited individually — content bytes are never walked one
+/// by one. Nothing is tokenized and nothing is allocated: the cost is
+/// the delimiter scan itself, not a parse of the document.
+///
+/// This replaces the whole-document `phokenize` the 0.6.2 append paid on
+/// every call, whose per-call cost grew linearly with document size and
+/// made chained appends quadratic.
+/// ----------------------------------------------------------------------------------------------------------
+fn last_scroll_coordinate(bytes: &[u8]) -> Coordinate {
+  // count[d]: breaks of dimension d in the suffix scanned so far
+  let mut count = [0usize; 9];
+  // resolved[d]: component value of dimension d, once a higher break
+  // (or the start of the document) fixes it
+  let mut resolved: [Option<usize>; 9] = [None; 9];
+  let mut end = bytes.len();
+  'scan: while end > 0 {
+    let start = end.saturating_sub(64);
+    let chunk = &bytes[start..end];
+    // bit i of `candidates` marks chunk[i] as a possible break byte
+    let mut candidates: u64 = 0;
+    let mut lanes = chunk.chunks_exact(8);
+    let mut base = 0;
+    for lane in &mut lanes {
+      let word = u64::from_le_bytes(lane.try_into().unwrap());
+      candidates |= break_candidates(word) << base;
+      base += 8;
+    }
+    for (i, byte) in lanes.remainder().iter().enumerate() {
+      if *byte < 0x20 {
+        candidates |= 1 << (base + i);
+      }
+    }
+    // visit candidates from the last byte backwards
+    while candidates != 0 {
+      let bit = 63 - candidates.leading_zeros();
+      candidates &= !(1 << bit);
+      let j = start + bit as usize;
+      if let Some(d) = break_dimension(bytes[j]) {
+        for e in 0..d {
+          if resolved[e].is_none() {
+            resolved[e] = Some(1 + count[e]);
+          }
+        }
+        count[d] += 1;
+        if d == 8 {
+          // every lower dimension is settled; the library component is
+          // 1 plus the library breaks in the unscanned head — a plain
+          // byte count, with no coordinate state left to track
+          count[8] += bytes[..j].iter().filter(|b| **b == LIBRARY_BREAK_U8).count();
+          resolved[8] = Some(1 + count[8]);
+          break 'scan;
+        }
+      }
+    }
+    end = start;
+  }
+  let value = |d: usize| resolved[d].unwrap_or(1 + count[d]);
+  Coordinate {
+    z: ZCoordinate { library: value(8), shelf: value(7), series: value(6) },
+    y: YCoordinate { collection: value(5), volume: value(4), book: value(3) },
+    x: XCoordinate { chapter: value(2), section: value(1), scroll: value(0) },
+  }
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn append
 ///
 /// Appends `scroll` at `location`, which must sort strictly after the
@@ -1931,6 +2049,11 @@ pub fn fetch_checked(input: &str, target: Coordinate) -> Option<String> {
 ///
 /// On None the append was rejected; the input String was consumed, so
 /// pass a clone if the caller needs it after a rejected append.
+///
+/// The document's end is located with `last_scroll_coordinate`, a
+/// backward delimiter scan over the bytes — existing text is never
+/// re-tokenized, so a call's cost tracks the delimiter run at the end
+/// of the document, not the size of the document.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn append(input: String, location: Coordinate, scroll: &str) -> Option<String> {
   if scroll.is_empty() {
@@ -1948,13 +2071,15 @@ pub fn append(input: String, location: Coordinate, scroll: &str) -> Option<Strin
     append_scroll(&mut out, &token, default_coordinate());
     return Some(out);
   }
-  let mut out = input[..keep].to_string();
-  let parts = phokenize(&out);
-  let last = parts.iter().rev().find(|p| !p.scroll.is_empty())?;
-  if location <= last.coord {
+  let last = last_scroll_coordinate(&input.as_bytes()[..keep]);
+  if location <= last {
     return None;
   }
-  append_scroll(&mut out, &token, last.coord);
+  // the input is owned: drop its trailing delimiters in place and grow
+  // it, rather than copying the kept prefix into a fresh string
+  let mut out = input;
+  out.truncate(keep);
+  append_scroll(&mut out, &token, last);
   Some(out)
 }
 
