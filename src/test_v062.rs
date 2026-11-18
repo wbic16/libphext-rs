@@ -180,6 +180,88 @@ mod tests {
         assert!(!phext::verify_commit(&doc, &[a], commit_at));
     }
 
+    // ---- commit verification, indexed --------------------------------------
+
+    #[test]
+    fn verify_commit_empty_batch_and_marker_only() {
+        let commit_at = c("1.1.1/1.1.1/1.1.1");
+        let marker = phext::commit_scroll(&[]);
+        let doc = phext::append_batch(String::new(), &[(commit_at, &marker)]).unwrap();
+        assert!(phext::verify_commit(&doc, &[], commit_at), "empty batch verifies against its marker");
+        assert!(!phext::verify_commit("", &[], commit_at), "no marker in an empty document");
+        let a = c("1.1.1/1.1.1/1.1.2");
+        assert!(!phext::verify_commit(&doc, &[a], commit_at), "marker-only doc, entry list non-empty");
+    }
+
+    #[test]
+    fn verify_commit_missing_foreign_and_reordered_entries() {
+        let a = c("1.1.1/1.3.1/1.1.1");
+        let b = c("1.1.1/1.3.1/1.1.2");
+        let commit_at = c("1.1.1/1.3.1/1.1.3");
+        let foreign = c("1.1.1/1.3.1/1.1.4");
+        let one = phext::checked_scroll("one");
+        let two = phext::checked_scroll("two");
+        let marker = phext::commit_scroll(&[(a, &one), (b, &two)]);
+        let doc = phext::append_batch(String::new(), &[(a, &one), (b, &two), (commit_at, &marker)]).unwrap();
+        assert!(phext::verify_commit(&doc, &[a, b], commit_at));
+
+        // an extra foreign scroll elsewhere in the document does not
+        // change the verdict for the committed batch
+        let with_foreign = phext::append(doc.clone(), foreign, "foreign").unwrap();
+        assert!(phext::verify_commit(&with_foreign, &[a, b], commit_at));
+        // ...but naming the foreign scroll as an entry does: its content
+        // was never bound by the marker
+        assert!(!phext::verify_commit(&with_foreign, &[a, b, foreign], commit_at));
+
+        // missing entry: the batch minus one scroll no longer verifies
+        let partial = phext::append_batch(String::new(), &[(a, &one), (commit_at, &marker)]).unwrap();
+        assert!(!phext::verify_commit(&partial, &[a, b], commit_at));
+
+        // entry order is bound by the marker checksum; duplicates are too
+        assert!(!phext::verify_commit(&doc, &[b, a], commit_at), "out of order");
+        assert!(!phext::verify_commit(&doc, &[a, a], commit_at), "duplicate entry");
+    }
+
+    #[test]
+    fn verify_commit_marker_line_precedence_matches_the_scanning_version() {
+        // The marker parser reads every line and later count=/check=
+        // lines win over earlier ones. The indexed implementation keeps
+        // that exact precedence; these cases pin it.
+        let a = c("1.1.1/1.3.1/1.1.1");
+        let commit_at = c("1.1.1/1.3.1/1.1.2");
+        let one = phext::checked_scroll("one");
+        let good = phext::commit_scroll(&[(a, &one)]);
+
+        let mut wrong_count_last = good.clone();
+        wrong_count_last.push_str("\ncount=99");
+        let doc = phext::append_batch(String::new(), &[(a, &one), (commit_at, &wrong_count_last)]).unwrap();
+        assert!(!phext::verify_commit(&doc, &[a], commit_at), "later count= line wins");
+
+        let mut wrong_then_right = String::from("phext-commit:1\ncount=99\ncheck=00000000000000000000000000000000\n");
+        wrong_then_right.push_str(&good.lines().nth(1).unwrap().to_string());
+        wrong_then_right.push('\n');
+        wrong_then_right.push_str(good.lines().nth(2).unwrap());
+        let doc = phext::append_batch(String::new(), &[(a, &one), (commit_at, &wrong_then_right)]).unwrap();
+        assert!(phext::verify_commit(&doc, &[a], commit_at), "later count=/check= lines win");
+
+        let bad_first_line = good.replacen("phext-commit:1", "phext-commit:2", 1);
+        let doc = phext::append_batch(String::new(), &[(a, &one), (commit_at, &bad_first_line)]).unwrap();
+        assert!(!phext::verify_commit(&doc, &[a], commit_at), "first line must be the version line");
+    }
+
+    #[test]
+    fn verify_commit_sparse_and_plain_contents() {
+        // entries at distant coordinates (the map must find them across
+        // dimension breaks) with plain, unchecked contents
+        let a = c("1.1.1/1.1.1/1.1.1");
+        let b = c("1.1.1/1.2.1/1.1.1");
+        let commit_at = c("2.1.1/1.1.1/1.1.1");
+        let marker = phext::commit_scroll(&[(a, "alpha"), (b, "beta\nsecond line")]);
+        let doc = phext::append_batch(String::new(), &[(a, "alpha"), (b, "beta\nsecond line"), (commit_at, &marker)]).unwrap();
+        assert!(phext::verify_commit(&doc, &[a, b], commit_at));
+        assert!(!phext::verify_commit(&doc, &[a, b], a), "entry coordinate is not a marker");
+    }
+
     // ---- empty-scroll semantics --------------------------------------------
 
     #[test]
