@@ -956,6 +956,95 @@ pub fn explode(input: &str) -> HashMap<Coordinate, String> {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @struct ScrollSpan
+///
+/// The borrowed form of a `PositionedScroll`: a scroll's coordinate plus the byte range of its
+/// text within the input document. Slicing the input with `range` yields exactly the scroll's
+/// text — building the index allocates no `String` per scroll.
+/// ----------------------------------------------------------------------------------------------------------
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ScrollSpan {
+  pub coord: Coordinate,
+  pub range: std::ops::Range<usize>
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn spans
+///
+/// Builds a borrowed span index over `input`: one `ScrollSpan` per scroll, in document order,
+/// giving each scroll's coordinate and the byte range of its text in `input`.
+///
+/// The walk is the `phokenize` walk — the same dimension breaks and the same coordinate
+/// arithmetic — except that it records byte ranges instead of allocating a `String` for every
+/// scroll. For every returned span, `&input[span.range]` is exactly the scroll `explode`
+/// returns at `span.coord`, and `span.range.start` is the offset `offset` reports for that
+/// coordinate.
+///
+/// Empty-scroll contract: a scroll exists iff it holds at least one byte — the definition
+/// `explode` encodes — so `spans` reports only non-empty scrolls. Delimiter runs that encode
+/// empty scrolls (leading breaks, runs between distant scrolls, trailing breaks) produce no
+/// span; an empty document, or a document of only delimiters, produces no spans. `phokenize`
+/// remains the tokenizer of record for empty slots: it additionally reports a final empty
+/// positioned scroll in those trailing cases, where `spans` reports none.
+///
+/// Chain bytes (0x02 / 0x03) are not dimension breaks, so — exactly as in `phokenize` and
+/// `explode` — they are scroll content here. This index covers a single phext (one universe);
+/// chain structure is the `parse_chains` layer above it.
+///
+/// Motivating consumer: holo-phext, whose `src/index.rs` carries a 323-line re-implementation
+/// of this walk, plus a duplicated private dimension-break predicate in its core, because
+/// libphext exported only owned-`String` tokenization (`phokenize`/`explode`) and a
+/// single-scroll `offset`. Downstream stores should index with `spans` instead of re-walking
+/// the format.
+///
+/// # Example
+///
+/// ```
+/// use libphext::phext::{spans, to_coordinate};
+/// let input = "alpha\u{17}beta";
+/// let index = spans(input);
+/// assert_eq!(index.len(), 2);
+/// assert_eq!(index[0].coord, to_coordinate("1.1.1/1.1.1/1.1.1"));
+/// assert_eq!(&input[index[0].range.clone()], "alpha");
+/// assert_eq!(&input[index[1].range.clone()], "beta");
+/// ```
+/// ----------------------------------------------------------------------------------------------------------
+pub fn spans(input: &str) -> Vec<ScrollSpan> {
+  let mut result: Vec<ScrollSpan> = Vec::new();
+  let bytes = input.as_bytes();
+  let max = bytes.len();
+  let mut coord = default_coordinate();
+  let mut pi: usize = 0;
+  loop {
+    let mut begin = coord;
+    let mut text_start: Option<usize> = None;
+    let mut text_end = max;
+    while pi < max {
+      let byte = bytes[pi];
+      if is_dimension_break(byte) {
+        apply_break(&mut coord, byte);
+        if text_start.is_some() {
+          text_end = pi;
+          pi += 1;
+          break;
+        }
+      } else if text_start.is_none() {
+        text_start = Some(pi);
+        begin = coord;
+      }
+      pi += 1;
+    }
+    // breaks are ASCII, so these offsets always fall on character boundaries
+    if let Some(first) = text_start {
+      result.push(ScrollSpan{coord: begin, range: first..text_end});
+    }
+    if pi >= max { break; }
+  }
+
+  result
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn implode
 ///
 /// Serializes a hierarchical hash of scrolls into a monolithic phext document.
