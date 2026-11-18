@@ -36,6 +36,7 @@ mod test_phokenize;
 mod test_chain;
 mod test_address;
 mod test_v062;
+mod test_spans;
 mod regressions;
 #[cfg(feature = "binary")]
 mod test_binary;
