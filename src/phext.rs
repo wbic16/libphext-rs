@@ -1911,6 +1911,11 @@ pub fn uncheck_scroll(scroll: &str) -> Option<String> {
 /// Fetches the scroll at `target` and returns its payload, but only when
 /// the scroll is checked and verifies. A missing, unchecked, or torn
 /// scroll yields None — recovery code can treat None as "not committed".
+///
+/// This is a single-scroll lookup: one early-exit scan, linear in the
+/// document, with no per-entry repetition inside the call. Callers that
+/// verify a whole batch should use `verify_commit`, which indexes the
+/// document once for the marker and every entry.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn fetch_checked(input: &str, target: Coordinate) -> Option<String> {
   uncheck_scroll(&fetch(input, target))
@@ -2029,11 +2034,26 @@ pub fn commit_scroll(entries: &[(Coordinate, &str)]) -> String {
 ///
 /// true when the scroll at `commit` is a commit marker whose count
 /// matches `entries` and whose checksum matches the entries' current
-/// contents, fetched in order. Any missing, altered, or torn entry —
+/// contents, in order. Any missing, altered, or torn entry —
 /// or a missing marker — yields false: the batch did not commit.
+///
+/// The document is indexed with a single `explode` pass and the marker
+/// and every entry are read from that map. The previous implementation
+/// ran the scanning `fetch` once for the marker and once per entry, so
+/// verification cost grew quadratically in document length — the cost
+/// a WAL recovery pass pays over the whole log, per transaction.
 /// ----------------------------------------------------------------------------------------------------------
 pub fn verify_commit(input: &str, entries: &[Coordinate], commit: Coordinate) -> bool {
-  let text = fetch(input, commit);
+  // One explode pass indexes the whole document; the marker and every
+  // entry below are map lookups, not a scanning `fetch` per entry.
+  // Semantics are preserved exactly: `explode` omits empty scrolls, so
+  // a missing or empty scroll looks up as "" — the same value `fetch`
+  // returned for it — and the marker parsing and the per-entry checks
+  // run in the same order, with the same outcomes, as the scanning
+  // version. (A differential harness over valid and corrupted batches
+  // accompanies this change; see the PR description.)
+  let map = explode(input);
+  let text = map.get(&commit).cloned().unwrap_or_default();
   let mut lines = text.lines();
   if lines.next() != Some("phext-commit:1") {
     return false;
@@ -2053,13 +2073,13 @@ pub fn verify_commit(input: &str, entries: &[Coordinate], commit: Coordinate) ->
   }
   let mut material = String::new();
   for coord in entries {
-    let content = fetch(input, *coord);
+    let content: &str = map.get(coord).map(|s| s.as_str()).unwrap_or("");
     if content.is_empty() {
       return false;
     }
     material.push_str(&coord.to_string());
     material.push('\n');
-    material.push_str(&content);
+    material.push_str(content);
     material.push('\n');
   }
   check == Some(checksum(&material).as_str())
