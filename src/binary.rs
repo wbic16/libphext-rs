@@ -236,3 +236,37 @@ pub fn ingest(bytes: &[u8]) -> String {
   }
   return phext::implode(map);
 }
+
+/// The prefix of a binary *field*: arbitrary bytes encoded for one line
+/// inside a text scroll (a `name=value` grammar, a WAL entry, a header
+/// block). Whole scrolls use `encode_scroll`; fields use this.
+pub const FIELD_PREFIX: &str = "phext-field:base64:";
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn encode_field
+///
+/// Encodes raw bytes as a single line of text: the field prefix plus
+/// RFC 4648 base64. The result contains no line breaks and none of the
+/// nine phext dimension-break bytes, so it can sit inside any
+/// line-structured scroll. The base64 overhead (+33%) is inherent to
+/// armouring bytes in a text line; this function standardizes the
+/// armour so every implementation reads the same field the same way.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn encode_field(payload: &[u8]) -> String {
+  let mut out = String::with_capacity(FIELD_PREFIX.len() + (payload.len() + 2) / 3 * 4);
+  out.push_str(FIELD_PREFIX);
+  STANDARD.encode_string(payload, &mut out);
+  return out;
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn decode_field
+///
+/// Decodes a field produced by `encode_field`. Returns None when the
+/// text lacks the field prefix or its body is not strict base64 — a
+/// plain text field is not a binary field, and yields None, not bytes.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn decode_field(text: &str) -> Option<Vec<u8>> {
+  let body = text.strip_prefix(FIELD_PREFIX)?;
+  return STANDARD.decode(body).ok();
+}
