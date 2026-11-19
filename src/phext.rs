@@ -1186,6 +1186,30 @@ pub fn toc_scrolls(input: &str, prefix: &[usize]) -> Vec<TocScroll> {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @fn toc_scrolls_by_suffix
+///
+/// Every scroll whose coordinate ENDS with `suffix` — the trailing 1 to 9 address
+/// components — in document order, as `TocScroll` entries (coordinate + bytes, no
+/// bodies). The relationship primitive: scrolls that share a chapter.section.scroll
+/// suffix are related wherever their library-through-book parents live, and this
+/// is the query that finds them. A 9-component suffix is a full coordinate and
+/// yields at most one scroll; an empty suffix yields every scroll, as
+/// `toc_scrolls(input, &[])` does.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn toc_scrolls_by_suffix(input: &str, suffix: &[usize]) -> Vec<TocScroll> {
+  let mut result: Vec<TocScroll> = Vec::new();
+  if suffix.len() > 9 { return result; }
+  let offset = 9 - suffix.len();
+  for span in spans(input) {
+    let components = coordinate_components(&span.coord);
+    if components[offset..] == *suffix {
+      result.push(TocScroll { coord: span.coord, bytes: span.range.len() });
+    }
+  }
+  result
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn implode
 ///
 /// Serializes a hierarchical hash of scrolls into a monolithic phext document.

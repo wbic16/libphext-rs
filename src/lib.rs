@@ -33,6 +33,7 @@ pub mod binary;
 pub mod seal;
 mod test_lib;
 mod test_toc;
+mod test_toc_suffix;
 mod test_phokenize;
 mod test_chain;
 mod test_address;
