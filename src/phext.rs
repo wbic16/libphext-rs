@@ -1045,6 +1045,147 @@ pub fn spans(input: &str) -> Vec<ScrollSpan> {
 }
 
 /// ----------------------------------------------------------------------------------------------------------
+/// @struct TocChild
+///
+/// One entry in a `toc_children` listing: a value taken by the next dimension below a
+/// coordinate prefix, together with the number of scrolls and the total scroll bytes
+/// in that child's subtree. Structure only — no scroll text is copied or returned.
+/// ----------------------------------------------------------------------------------------------------------
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TocChild {
+  pub value: usize,
+  pub scrolls: usize,
+  pub bytes: usize
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @struct TocSummary
+///
+/// The aggregate shape of a coordinate prefix's subtree: how many scrolls it holds
+/// and how many bytes of scroll text they carry in total.
+/// ----------------------------------------------------------------------------------------------------------
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TocSummary {
+  pub scrolls: usize,
+  pub bytes: usize
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @struct TocScroll
+///
+/// One entry in a `toc_scrolls` listing: a scroll's full coordinate and the byte
+/// length of its text. The planet list for progressive clients — coordinates and
+/// sizes, never bodies.
+/// ----------------------------------------------------------------------------------------------------------
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TocScroll {
+  pub coord: Coordinate,
+  pub bytes: usize
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// The nine components of a coordinate in address order — library, shelf, series,
+/// collection, volume, book, chapter, section, scroll — the order TOC prefixes
+/// match against.
+/// ----------------------------------------------------------------------------------------------------------
+fn coordinate_components(coord: &Coordinate) -> [usize; 9] {
+  [coord.z.library, coord.z.shelf, coord.z.series,
+   coord.y.collection, coord.y.volume, coord.y.book,
+   coord.x.chapter, coord.x.section, coord.x.scroll]
+}
+
+fn prefix_matches(components: &[usize; 9], prefix: &[usize]) -> bool {
+  prefix.iter().enumerate().all(|(i, v)| components[i] == *v)
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn toc_children
+///
+/// The progressive table of contents: given a coordinate prefix — the leading
+/// `prefix.len()` address components, 0 to 8 of them — returns one `TocChild` per
+/// distinct value the next dimension takes under that prefix, sorted ascending,
+/// each with the scroll count and total scroll bytes of its subtree.
+///
+/// A client walking a phext from the root calls `toc_children(input, &[])` for the
+/// libraries present, then `toc_children(input, &[2])` for the shelves of library 2,
+/// and so on — downloading structure one level at a time instead of the whole
+/// document. Built on the `spans` index in a single pass; scroll bodies are never
+/// copied. A prefix of 9 or more components has no next dimension and yields an
+/// empty listing, as does a prefix no scroll matches.
+///
+/// The children partition their parent: for any prefix shorter than 9 components,
+/// the `scrolls` of `toc_children(input, prefix)` sum to
+/// `toc_summary(input, prefix).scrolls`, and the `bytes` sum likewise.
+///
+/// # Example
+///
+/// ```
+/// use libphext::phext::toc_children;
+/// let input = "alpha\u{17}beta\u{18}gamma";
+/// let root = toc_children(input, &[]);
+/// assert_eq!(root.len(), 1);
+/// assert_eq!(root[0].value, 1);
+/// assert_eq!(root[0].scrolls, 3);
+/// ```
+/// ----------------------------------------------------------------------------------------------------------
+pub fn toc_children(input: &str, prefix: &[usize]) -> Vec<TocChild> {
+  let depth = prefix.len();
+  if depth >= 9 { return Vec::new(); }
+  let mut groups: std::collections::BTreeMap<usize, (usize, usize)> = Default::default();
+  for span in spans(input) {
+    let components = coordinate_components(&span.coord);
+    if prefix_matches(&components, prefix) {
+      let entry = groups.entry(components[depth]).or_insert((0, 0));
+      entry.0 += 1;
+      entry.1 += span.range.len();
+    }
+  }
+  groups.into_iter().map(|(value, (scrolls, bytes))| TocChild { value, scrolls, bytes }).collect()
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn toc_summary
+///
+/// The size of a subtree: the number of scrolls under `prefix` (0 to 9 leading
+/// address components) and their total byte length. `toc_summary(input, &[])`
+/// summarizes the whole document; a full 9-component prefix summarizes a single
+/// scroll — 1 scroll if it is populated, 0 if it is not.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn toc_summary(input: &str, prefix: &[usize]) -> TocSummary {
+  let mut result = TocSummary { scrolls: 0, bytes: 0 };
+  if prefix.len() > 9 { return result; }
+  for span in spans(input) {
+    let components = coordinate_components(&span.coord);
+    if prefix_matches(&components, prefix) {
+      result.scrolls += 1;
+      result.bytes += span.range.len();
+    }
+  }
+  result
+}
+
+/// ----------------------------------------------------------------------------------------------------------
+/// @fn toc_scrolls
+///
+/// Every scroll under `prefix` (0 to 9 leading address components), in document
+/// order, as a `TocScroll`: full coordinate plus byte length, no bodies. This is
+/// the planet list a progressive client renders at the bottom of a zoom — it asks
+/// for the scrolls of one star system, not of the whole phext. A full 9-component
+/// prefix yields the single scroll at that coordinate, if populated.
+/// ----------------------------------------------------------------------------------------------------------
+pub fn toc_scrolls(input: &str, prefix: &[usize]) -> Vec<TocScroll> {
+  let mut result: Vec<TocScroll> = Vec::new();
+  if prefix.len() > 9 { return result; }
+  for span in spans(input) {
+    let components = coordinate_components(&span.coord);
+    if prefix_matches(&components, prefix) {
+      result.push(TocScroll { coord: span.coord, bytes: span.range.len() });
+    }
+  }
+  result
+}
+
+/// ----------------------------------------------------------------------------------------------------------
 /// @fn implode
 ///
 /// Serializes a hierarchical hash of scrolls into a monolithic phext document.
