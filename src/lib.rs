@@ -32,6 +32,7 @@ pub mod binary;
 #[cfg(feature = "xz")]
 pub mod seal;
 mod test_lib;
+mod test_toc;
 mod test_phokenize;
 mod test_chain;
 mod test_address;
