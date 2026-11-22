@@ -27,6 +27,7 @@
 //! occasionally gotten wrong) by every host.
 
 pub mod phext;
+pub mod epoch;
 #[cfg(feature = "binary")]
 pub mod binary;
 #[cfg(feature = "xz")]
@@ -39,6 +40,7 @@ mod test_chain;
 mod test_address;
 mod test_v062;
 mod test_spans;
+mod test_epoch;
 mod regressions;
 #[cfg(feature = "binary")]
 mod test_binary;
