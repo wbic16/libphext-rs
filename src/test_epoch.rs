@@ -260,7 +260,8 @@ const I64_MAX_VECTOR: (i64, u64, i64, i64, i64) = (9223372036854775807, 21960409
     }
 
     // ------------------------------------------------------------------
-    // Age tests (Will's ruling, 2026-11-22: the Age field is 42 bits).
+    // Sentron Age tests (Will's ruling, 2026-11-22: the Sentron Age
+    // field is 42 bits; the coarse Sentron Age is its 16-bit form).
     // The pinned values below were computed in arbitrary precision
     // (python3) from the defining formula — age = floor(elapsed × 2^42
     // / epoch length), with elapsed in seconds or nanoseconds — never
@@ -269,7 +270,7 @@ const I64_MAX_VECTOR: (i64, u64, i64, i64, i64) = (9223372036854775807, 21960409
 
     #[test]
     fn test_age_constants() {
-        // the 42-bit field of record: 2^42 ages per epoch, ≈ 10.4715 GHz
+        // the 42-bit field of record: 2^42 Sentron Ages per epoch, ≈ 10.4715 GHz
         assert_eq!(epoch::AGE_BITS, 42);
         assert_eq!(epoch::AGES_PER_EPOCH, 4398046511104); // 2^42
         assert_eq!(epoch::AGE_MAX, 4398046511103); // 2^42 - 1
@@ -377,7 +378,7 @@ const I64_MAX_VECTOR: (i64, u64, i64, i64, i64) = (9223372036854775807, 21960409
 
     #[test]
     fn test_coarse_age_constants() {
-        // the 16-bit register-grade field: 65,536 coarse ages per epoch
+        // the 16-bit register-grade field: 65,536 coarse Sentron Ages per epoch
         assert_eq!(epoch::COARSE_AGE_BITS, 16);
         assert_eq!(epoch::COARSE_AGES_PER_EPOCH, 65536); // 2^16
         assert_eq!(epoch::COARSE_AGE_MAX, 65535); // 2^16 - 1
