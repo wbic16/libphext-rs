@@ -258,4 +258,168 @@ const I64_MAX_VECTOR: (i64, u64, i64, i64, i64) = (9223372036854775807, 21960409
             last = n;
         }
     }
+
+    // ------------------------------------------------------------------
+    // Sentron Age tests (Will's ruling, 2026-11-22: the Sentron Age
+    // field is 42 bits; the coarse Sentron Age is its 16-bit form).
+    // The pinned values below were computed in arbitrary precision
+    // (python3) from the defining formula — age = floor(elapsed × 2^42
+    // / epoch length), with elapsed in seconds or nanoseconds — never
+    // from this crate's own arithmetic.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn test_age_constants() {
+        // the 42-bit field of record: 2^42 Sentron Ages per epoch, ≈ 10.4715 GHz
+        assert_eq!(epoch::AGE_BITS, 42);
+        assert_eq!(epoch::AGES_PER_EPOCH, 4398046511104); // 2^42
+        assert_eq!(epoch::AGE_MAX, 4398046511103); // 2^42 - 1
+        assert_eq!(epoch::AGES_PER_EPOCH - 1, epoch::AGE_MAX);
+        // ages are 64-bit values, like epoch numbers
+        assert_eq!(std::mem::size_of_val(&epoch::age_at(epoch::EPOCH_ANCHOR_UNIX).unwrap()), 8);
+    }
+
+    #[test]
+    fn test_age_specified_cases() {
+        // the anchor: EE 1 begins at age 0
+        assert_eq!(epoch::age_at(1795327200), Some(0));
+        // one second in: floor(2^42 / 420)
+        assert_eq!(epoch::age_at(1795327201), Some(10471539312));
+        // mid-epoch (210 s) is exactly half the field: 2^41
+        assert_eq!(epoch::age_at(1795327200 + 210), Some(2199023255552));
+        assert_eq!(epoch::age_at(1795327200 + 210), Some(1u64 << 41));
+        // the last second of EE 1: floor(419 × 2^42 / 420)
+        assert_eq!(epoch::age_at(1795327619), Some(4387574971791));
+        // a pinned vector-table point (EE 54, 406 s in)
+        assert_eq!(epoch::age_at(1795349866), Some(4251444960733));
+        // the largest timestamp: seconds_into = 187, age stays exact
+        assert_eq!(epoch::age_at(i64::MAX), Some(1958177851372));
+    }
+
+    #[test]
+    fn test_age_pre_anchor_is_none() {
+        // a pre-epoch instant is inside no epoch and has no age — the
+        // same answer seconds_into_epoch gives
+        for t in [0i64, 1, 1234567890, 1795327199] {
+            assert_eq!(epoch::age_at(t), None, "t={t}");
+            assert_eq!(epoch::age_at_nanos(t, 0), None, "t={t}");
+        }
+    }
+
+    #[test]
+    fn test_age_epoch_rollover() {
+        // the age resets to 0 as the epoch count increments: the pair
+        // (epoch, age) steps cleanly across the boundary
+        let last = 1795327200 + 419;
+        assert_eq!(epoch::epoch_at(last), 1);
+        assert_eq!(epoch::age_at(last), Some(4387574971791));
+        let first = last + 1;
+        assert_eq!(epoch::epoch_at(first), 2);
+        assert_eq!(epoch::age_at(first), Some(0));
+        // mid-epoch of EE 2 is the same age as mid-epoch of EE 1
+        assert_eq!(epoch::age_at(first + 210), Some(1u64 << 41));
+    }
+
+    #[test]
+    fn test_age_monotonic_within_epoch() {
+        // across every second of two consecutive epochs the age never
+        // decreases inside an epoch, and the (epoch, age) pair never
+        // decreases across the boundary between them
+        let mut last_pair = (0u64, 0u64);
+        for t in 1795327200..1795327200 + 840 {
+            let pair = (epoch::epoch_at(t), epoch::age_at(t).expect("post-anchor"));
+            assert!(pair >= last_pair, "age went backwards at t={t}");
+            last_pair = pair;
+        }
+    }
+
+    #[test]
+    fn test_age_nanos() {
+        // zero nanoseconds agrees exactly with the whole-second age
+        for t in [1795327200i64, 1795327201, 1795349866, 1795327619] {
+            assert_eq!(epoch::age_at_nanos(t, 0), epoch::age_at(t), "t={t}");
+        }
+        // half a second into the epoch: floor(2^42 / 840)
+        assert_eq!(epoch::age_at_nanos(1795327200, 500_000_000), Some(5235769656));
+        // half a second past mid-epoch
+        assert_eq!(epoch::age_at_nanos(1795327200 + 210, 500_000_000), Some(2204259025208));
+        // the final nanosecond of EE 1 is still inside the field
+        assert_eq!(epoch::age_at_nanos(1795327619, 999_999_999), Some(4398046511093));
+        assert!(epoch::age_at_nanos(1795327619, 999_999_999).unwrap() <= epoch::AGE_MAX);
+        // an out-of-range nanosecond part is rejected, not wrapped
+        assert_eq!(epoch::age_at_nanos(1795327200, 1_000_000_000), None);
+        assert_eq!(epoch::age_at_nanos(1795327200, u32::MAX), None);
+    }
+
+    #[test]
+    fn test_age_start_inverse() {
+        // the first age of EE 1 begins in the anchor second itself
+        assert_eq!(epoch::age_start(1, 0), Some(1795327200));
+        // the last age of EE 1 begins in its last second
+        assert_eq!(epoch::age_start(1, epoch::AGE_MAX), Some(1795327619));
+        // mid-epoch age 2^41 begins exactly at the mid-epoch second
+        assert_eq!(epoch::age_start(1, 1u64 << 41), Some(1795327200 + 210));
+        // EE 0 has no ages; an out-of-field age has no start
+        assert_eq!(epoch::age_start(0, 0), None);
+        assert_eq!(epoch::age_start(1, epoch::AGE_MAX + 1), None);
+        // the inverse names the second in which the age begins: for the
+        // age in force one second into EE 1, that second is the anchor
+        // second — the age began ~14.6 ps before the boundary. The
+        // one-second slack is the documented resolution limit.
+        let a = epoch::age_at(1795327201).unwrap();
+        assert_eq!(epoch::age_start(1, a), Some(1795327200));
+        // in general the named second contains the age's first instant:
+        // it never postdates the timestamp and lags it by at most 1 s
+        for t in [1795327200i64, 1795327201, 1795349866, 1795327619, 1893456000] {
+            let start = epoch::age_start(epoch::epoch_at(t), epoch::age_at(t).unwrap()).unwrap();
+            assert!(start <= t && t - start <= 1, "t={t} start={start}");
+        }
+    }
+
+    #[test]
+    fn test_coarse_age_constants() {
+        // the 16-bit register-grade field: 65,536 coarse Sentron Ages per epoch
+        assert_eq!(epoch::COARSE_AGE_BITS, 16);
+        assert_eq!(epoch::COARSE_AGES_PER_EPOCH, 65536); // 2^16
+        assert_eq!(epoch::COARSE_AGE_MAX, 65535); // 2^16 - 1
+        assert_eq!(epoch::COARSE_AGES_PER_EPOCH - 1, epoch::COARSE_AGE_MAX);
+        // the scale factor between the fields is 2^(42-16) = 2^26
+        assert_eq!(epoch::AGE_BITS - epoch::COARSE_AGE_BITS, 26);
+    }
+
+    #[test]
+    fn test_coarse_age_specified_cases() {
+        // the anchor: EE 1 begins at coarse age 0
+        assert_eq!(epoch::coarse_age_at(1795327200), Some(0));
+        // one second in: floor(65536 / 420)
+        assert_eq!(epoch::coarse_age_at(1795327201), Some(156));
+        // mid-epoch (210 s) is exactly half the 16-bit field
+        assert_eq!(epoch::coarse_age_at(1795327200 + 210), Some(32768));
+        // the last second of EE 1: floor(419 × 65536 / 420) = 65,379
+        assert_eq!(epoch::coarse_age_at(1795327619), Some(65379));
+        // pre-anchor: None, exactly as the fine age
+        for t in [0i64, 1, 1234567890, 1795327199] {
+            assert_eq!(epoch::coarse_age_at(t), None, "t={t}");
+        }
+        // the coarse age rolls over with the epoch, like the fine age
+        assert_eq!(epoch::epoch_at(1795327620), 2);
+        assert_eq!(epoch::coarse_age_at(1795327620), Some(0));
+    }
+
+    #[test]
+    fn test_coarse_age_is_fine_age_shifted() {
+        // the coarse age is the fine age >> 26 wherever both are
+        // defined — across boundaries, vector-table points, and the
+        // largest representable timestamp
+        for t in [1795327200i64, 1795327201, 1795349866, 1795327619, 1795327620, 1893456000, i64::MAX] {
+            assert_eq!(epoch::coarse_age_at(t), epoch::age_at(t).map(|a| a >> 26), "t={t}");
+        }
+        // and monotonically non-decreasing within an epoch
+        let mut last = 0u64;
+        for t in 1795327200..1795327200 + 420 {
+            let c = epoch::coarse_age_at(t).expect("post-anchor");
+            assert!(c >= last, "coarse age went backwards at t={t}");
+            last = c;
+        }
+    }
 }
