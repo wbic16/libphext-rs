@@ -27,6 +27,7 @@
 //! occasionally gotten wrong) by every host.
 
 pub mod phext;
+pub mod stores;
 pub mod epoch;
 #[cfg(feature = "binary")]
 pub mod binary;
